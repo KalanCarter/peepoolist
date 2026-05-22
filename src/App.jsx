@@ -370,9 +370,9 @@ function HomePage({ user, isAdmin, signIn, signUp, signInWithGoogle, signInWithG
         <Card className="overflow-hidden rounded-[2rem] border-white/10 bg-white/[0.04] text-slate-100 shadow-2xl shadow-black/30">
           <CardContent className="p-7 md:p-10">
             <Badge className="mb-5 rounded-xl bg-yellow-300 text-black">Geometry Dash challenge rankings</Badge>
-            <h2 className="text-4xl font-black leading-tight tracking-tight md:text-6xl">The official ranking hub for PeePooList levels.</h2>
+            <h2 className="text-4xl font-black leading-tight tracking-tight md:text-6xl">A Geometry Dash level list for PeePooList rankings.</h2>
             <p className="mt-5 max-w-2xl text-lg text-slate-300">
-              PeePooList ranks custom levels in two categories: possible levels on <b>The Pooplist</b> and impossible levels on <b>The Peelist</b>. Scroll the lists, submit level change requests, and follow the current rankings.
+              PeePooList ranks Geometry Dash levels in two categories: possible levels on <b>The Pooplist</b> and impossible levels on <b>The Peelist</b>. Browse the ranked lists, submit level change requests, and follow the current placements.
             </p>
           </CardContent>
         </Card>
