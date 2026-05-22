@@ -490,7 +490,7 @@ function LevelCard({ level, index, listType, removeMode, onRemove, reorderMode, 
         <div className="text-7xl font-black leading-none text-white drop-shadow-lg">#{index + 1}</div>
       </div>
 
-      <div className="relative h-48 overflow-hidden border-y border-white/10 md:h-auto md:w-[260px] md:border-x md:border-y-0">
+      <div className="relative h-48 overflow-hidden border-y border-white/10 md:min-h-[300px] md:w-[260px] md:self-stretch md:border-x md:border-y-0">
         <img src={imageFor(level, index, listType)} alt={`${level.name} thumbnail`} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
       </div>
@@ -554,7 +554,7 @@ function LevelEditCard({ level, index, listType, draggable, isDragging, onDragSt
           <div className="text-6xl font-black leading-none text-white drop-shadow-lg">#{index + 1}</div>
         </div>
 
-        <label htmlFor={fileInputId} className="relative h-48 cursor-pointer overflow-hidden border-y border-white/10 md:h-auto md:w-[240px] md:border-x md:border-y-0">
+        <label htmlFor={fileInputId} className="relative h-48 cursor-pointer overflow-hidden border-y border-white/10 md:min-h-[300px] md:w-[240px] md:self-stretch md:border-x md:border-y-0">
           <img src={imageFor(level, index, listType)} alt={`${level.name} thumbnail`} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
           <div className="absolute inset-0 grid place-items-center bg-black/45 opacity-0 transition group-hover:opacity-100">
             <span className="inline-flex items-center rounded-2xl bg-white/15 px-4 py-2 text-sm font-bold text-white backdrop-blur">
