@@ -288,7 +288,7 @@ function SiteShell({ children, tab, setTab, isAdmin, user }) {
   );
 }
 
-function AuthBox({ user, isAdmin, signIn, signUp, signInWithGoogle, signOut, authEmail, setAuthEmail, authPassword, setAuthPassword, authMessage, isConfigured }) {
+function AuthBox({ user, isAdmin, signIn, signUp, signInWithGoogle, signInWithApple, signOut, authEmail, setAuthEmail, authPassword, setAuthPassword, authMessage, isConfigured }) {
   return (
     <Card className="rounded-[2rem] border-white/10 bg-slate-950/70 text-slate-100 shadow-2xl shadow-black/30">
       <CardContent className="space-y-4 p-6">
@@ -350,6 +350,10 @@ function AuthBox({ user, isAdmin, signIn, signUp, signInWithGoogle, signOut, aut
               <span className="mr-2 grid h-5 w-5 place-items-center rounded-full bg-white text-sm font-black text-slate-950">G</span>
               Sign in with Google
             </Button>
+            <Button onClick={signInWithApple} variant="secondary" className="w-full rounded-2xl" disabled={!isConfigured}>
+              <span className="mr-2 grid h-5 w-5 place-items-center rounded-full bg-white text-sm font-black text-slate-950"></span>
+              Sign in with Apple
+            </Button>
           </>
         )}
 
@@ -359,7 +363,7 @@ function AuthBox({ user, isAdmin, signIn, signUp, signInWithGoogle, signOut, aut
   );
 }
 
-function HomePage({ user, isAdmin, signIn, signUp, signInWithGoogle, signOut, authEmail, setAuthEmail, authPassword, setAuthPassword, authMessage, requestCount, isConfigured }) {
+function HomePage({ user, isAdmin, signIn, signUp, signInWithGoogle, signInWithApple, signOut, authEmail, setAuthEmail, authPassword, setAuthPassword, authMessage, requestCount, isConfigured }) {
   return (
     <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
       <section className="grid gap-6 md:grid-cols-[1.2fr_.8fr]">
@@ -379,6 +383,7 @@ function HomePage({ user, isAdmin, signIn, signUp, signInWithGoogle, signOut, au
           signIn={signIn}
           signUp={signUp}
           signInWithGoogle={signInWithGoogle}
+          signInWithApple={signInWithApple}
           signOut={signOut}
           authEmail={authEmail}
           setAuthEmail={setAuthEmail}
@@ -1181,6 +1186,20 @@ export default function PeePooListWebsite() {
     }
   }
 
+  async function signInWithApple() {
+    if (!supabase) return;
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "apple",
+      options: {
+        redirectTo: window.location.origin,
+      },
+    });
+
+    if (error) {
+      setAuthMessage(error.message);
+    }
+  }
+
   async function signOut() {
     if (!supabase) return;
     await supabase.auth.signOut();
@@ -1510,6 +1529,7 @@ export default function PeePooListWebsite() {
         signIn={signIn}
         signUp={signUp}
         signInWithGoogle={signInWithGoogle}
+        signInWithApple={signInWithApple}
         signOut={signOut}
         authEmail={authEmail}
         setAuthEmail={setAuthEmail}
