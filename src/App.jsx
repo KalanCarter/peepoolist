@@ -48,7 +48,7 @@ function Button({ className = "", variant = "default", type = "button", ...props
     <button
       type={type}
       className={cn(
-        "inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold transition disabled:pointer-events-none disabled:opacity-50",
+        "inline-flex items-center justify-center rounded-xl px-3 py-2 text-xs font-semibold transition disabled:pointer-events-none disabled:opacity-50 sm:px-4 sm:text-sm",
         variants[variant] || variants.default,
         className
       )}
@@ -346,7 +346,7 @@ function ChangeEmailPanel({ user, onCancel, onChangeEmail }) {
       initial={{ opacity: 0, x: 14, scale: 0.98 }}
       animate={{ opacity: 1, x: 0, scale: 1 }}
       exit={{ opacity: 0, x: 14, scale: 0.98 }}
-      className="absolute right-[17rem] top-12 z-50 w-[330px] rounded-[2rem] border border-white/10 bg-slate-950/95 p-5 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl max-md:right-0 max-md:top-[21rem]"
+      className="fixed left-3 right-3 top-24 z-[60] max-h-[72vh] overflow-y-auto rounded-[1.5rem] border border-white/10 bg-slate-950/95 p-4 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl md:absolute md:left-auto md:right-[17rem] md:top-12 md:w-[330px] md:max-h-none md:overflow-visible md:rounded-[2rem] md:p-5"
     >
       <h3 className="text-lg font-black">Change Email</h3>
       <p className="mt-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-sm text-slate-300">
@@ -474,7 +474,7 @@ function ChangePasswordPanel({ onCancel, onChangePassword }) {
       initial={{ opacity: 0, x: 14, scale: 0.98 }}
       animate={{ opacity: 1, x: 0, scale: 1 }}
       exit={{ opacity: 0, x: 14, scale: 0.98 }}
-      className="absolute right-[17rem] top-12 z-50 w-[330px] rounded-[2rem] border border-white/10 bg-slate-950/95 p-5 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl max-md:right-0 max-md:top-[21rem]"
+      className="fixed left-3 right-3 top-24 z-[60] max-h-[72vh] overflow-y-auto rounded-[1.5rem] border border-white/10 bg-slate-950/95 p-4 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl md:absolute md:left-auto md:right-[17rem] md:top-12 md:w-[330px] md:max-h-none md:overflow-visible md:rounded-[2rem] md:p-5"
     >
       <h3 className="text-lg font-black">Change Password</h3>
 
@@ -558,7 +558,7 @@ function StatusRequestPanel({ onCancel, onSubmitStatusRequest }) {
       initial={{ opacity: 0, x: 14, scale: 0.98 }}
       animate={{ opacity: 1, x: 0, scale: 1 }}
       exit={{ opacity: 0, x: 14, scale: 0.98 }}
-      className="absolute right-[17rem] top-12 z-50 w-[360px] rounded-[2rem] border border-white/10 bg-slate-950/95 p-5 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl max-md:right-0 max-md:top-[21rem]"
+      className="fixed left-3 right-3 top-24 z-[60] max-h-[72vh] overflow-y-auto rounded-[1.5rem] border border-white/10 bg-slate-950/95 p-4 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl md:absolute md:left-auto md:right-[17rem] md:top-12 md:w-[360px] md:max-h-none md:overflow-visible md:rounded-[2rem] md:p-5"
     >
       <div className="flex items-center gap-3">
         <label className="text-sm font-black text-slate-200">Request:</label>
@@ -615,7 +615,7 @@ function ProfileMenu({ user, isAdmin, profile, onSignOut, onChangeEmail, onChang
           setActivePanel("");
         }}
         variant="secondary"
-        className="rounded-2xl"
+        className="shrink-0 rounded-2xl"
       >
         <UserCircle className="mr-2 h-4 w-4" />
         Profile
@@ -627,7 +627,7 @@ function ProfileMenu({ user, isAdmin, profile, onSignOut, onChangeEmail, onChang
             initial={{ opacity: 0, y: -8, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.98 }}
-            className="absolute right-0 top-12 z-50 w-64 rounded-[2rem] border border-white/10 bg-slate-950/95 p-4 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl"
+            className="fixed left-3 right-3 top-24 z-50 max-h-[72vh] overflow-y-auto rounded-[1.5rem] border border-white/10 bg-slate-950/95 p-4 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl md:absolute md:left-auto md:right-0 md:top-12 md:w-64 md:max-h-none md:overflow-visible md:rounded-[2rem]"
           >
             {user ? (
               <>
@@ -696,7 +696,7 @@ function NotificationsMenu({ user, isAdmin, requests, statusRequests, notificati
 
   return (
     <div className="relative">
-      <Button onClick={() => setOpen((value) => !value)} variant="secondary" className="relative rounded-2xl">
+      <Button onClick={() => setOpen((value) => !value)} variant="secondary" className="relative shrink-0 rounded-2xl">
         <Bell className="h-4 w-4" />
         {unreadCount > 0 && (
           <span className="absolute -bottom-1 -right-1 grid h-5 min-w-5 place-items-center rounded-full bg-red-600 px-1 text-[10px] font-black text-white">
@@ -711,7 +711,7 @@ function NotificationsMenu({ user, isAdmin, requests, statusRequests, notificati
             initial={{ opacity: 0, y: -8, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.98 }}
-            className="absolute right-0 top-12 z-50 w-80 rounded-[2rem] border border-white/10 bg-slate-950/95 p-4 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl"
+            className="fixed left-3 right-3 top-24 z-50 max-h-[72vh] overflow-y-auto rounded-[1.5rem] border border-white/10 bg-slate-950/95 p-4 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl md:absolute md:left-auto md:right-0 md:top-12 md:w-80 md:max-h-none md:overflow-visible md:rounded-[2rem]"
           >
             <div className="mb-3 flex items-center justify-between gap-3">
               <h3 className="text-lg font-black">Notifications</h3>
@@ -761,7 +761,7 @@ function StatusRequestsPanel({ statusRequests, onApprove, onDeny }) {
   const [expandedId, setExpandedId] = useState("");
 
   return (
-    <section className="rounded-[2rem] border border-white/10 bg-slate-950/60 p-6 text-slate-300">
+    <section className="rounded-[1.5rem] border border-white/10 bg-slate-950/60 p-4 text-slate-300 md:rounded-[2rem] md:p-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h3 className="text-xl font-black text-white">Admin status requests</h3>
@@ -835,25 +835,25 @@ function SiteShell({ children, tab, setTab, isAdmin, user, profile, signOut, cha
       </div>
 
       <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0c1220]/80 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-4 md:flex-row md:items-center md:justify-between">
+        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-3 py-3 md:flex-row md:items-center md:justify-between md:px-4 md:py-4">
           <button onClick={() => setTab("home")} className="group flex items-center gap-3 text-left">
-            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-yellow-300 to-amber-700 text-2xl shadow-lg shadow-yellow-900/30 transition group-hover:scale-105">
+            <div className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br from-yellow-300 to-amber-700 text-xl shadow-lg shadow-yellow-900/30 transition group-hover:scale-105 md:h-12 md:w-12 md:text-2xl">
               💩
             </div>
             <div>
-              <h1 className="text-2xl font-black tracking-tight md:text-3xl">PeePooList</h1>
-              <p className="text-xs uppercase tracking-[0.28em] text-slate-400">peepoolist.com</p>
+              <h1 className="text-xl font-black tracking-tight md:text-3xl">PeePooList</h1>
+              <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400 md:text-xs md:tracking-[0.28em]">peepoolist.com</p>
             </div>
           </button>
 
-          <nav className="flex flex-wrap items-center gap-2">
-            <Button variant={tab === "home" ? "default" : "secondary"} onClick={() => setTab("home")} className="rounded-2xl">
+          <nav className="flex w-full items-center gap-2 overflow-x-auto pb-1 md:w-auto md:flex-wrap md:overflow-visible md:pb-0">
+            <Button variant={tab === "home" ? "default" : "secondary"} onClick={() => setTab("home")} className="shrink-0 rounded-2xl">
               <Home className="mr-2 h-4 w-4" /> Home
             </Button>
-            <Button variant={tab === "pooplist" ? "default" : "secondary"} onClick={() => setTab("pooplist")} className="rounded-2xl">
+            <Button variant={tab === "pooplist" ? "default" : "secondary"} onClick={() => setTab("pooplist")} className="shrink-0 rounded-2xl">
               The Pooplist
             </Button>
-            <Button variant={tab === "peelist" ? "default" : "secondary"} onClick={() => setTab("peelist")} className="rounded-2xl">
+            <Button variant={tab === "peelist" ? "default" : "secondary"} onClick={() => setTab("peelist")} className="shrink-0 rounded-2xl">
               The Peelist
             </Button>
             <NotificationsMenu
@@ -877,15 +877,15 @@ function SiteShell({ children, tab, setTab, isAdmin, user, profile, signOut, cha
         </div>
       </header>
 
-      <main className="relative mx-auto max-w-6xl px-4 py-8">{children}</main>
+      <main className="relative mx-auto max-w-6xl px-3 py-5 md:px-4 md:py-8">{children}</main>
     </div>
   );
 }
 
 function AuthBox({ user, isAdmin, signIn, signUp, signInWithGoogle, signInWithGithub, signOut, authEmail, setAuthEmail, authPassword, setAuthPassword, authMessage, isConfigured }) {
   return (
-    <Card className="rounded-[2rem] border-white/10 bg-slate-950/70 text-slate-100 shadow-2xl shadow-black/30">
-      <CardContent className="space-y-4 p-6">
+    <Card className="rounded-[1.5rem] border-white/10 bg-slate-950/70 text-slate-100 shadow-2xl shadow-black/30 md:rounded-[2rem]">
+      <CardContent className="space-y-4 p-4 md:p-6">
         <div className="flex items-center gap-3">
           <div className="grid h-11 w-11 place-items-center rounded-2xl bg-white/10">
             {isAdmin ? <ShieldCheck className="h-5 w-5 text-emerald-300" /> : <Mail className="h-5 w-5 text-yellow-200" />}
@@ -961,11 +961,11 @@ function HomePage({ user, isAdmin, signIn, signUp, signInWithGoogle, signInWithG
   return (
     <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
       <section className="grid gap-6 md:grid-cols-[1.2fr_.8fr]">
-        <Card className="overflow-hidden rounded-[2rem] border-white/10 bg-white/[0.04] text-slate-100 shadow-2xl shadow-black/30">
-          <CardContent className="p-7 md:p-10">
+        <Card className="overflow-hidden rounded-[1.5rem] border-white/10 bg-white/[0.04] text-slate-100 shadow-2xl shadow-black/30 md:rounded-[2rem]">
+          <CardContent className="p-5 md:p-10">
             <Badge className="mb-5 rounded-xl bg-yellow-300 text-black">Geometry Dash challenge rankings</Badge>
-            <h2 className="text-4xl font-black leading-tight tracking-tight md:text-6xl">A Geometry Dash level list for PeePooList rankings.</h2>
-            <p className="mt-5 max-w-2xl text-lg text-slate-300">
+            <h2 className="text-3xl font-black leading-tight tracking-tight md:text-6xl">A Geometry Dash level list for PeePooList rankings.</h2>
+            <p className="mt-4 max-w-2xl text-base text-slate-300 md:mt-5 md:text-lg">
               PeePooList ranks Geometry Dash levels in two categories: possible levels on <b>The Pooplist</b> and impossible levels on <b>The Peelist</b>. Browse the ranked lists, submit level change requests, and follow the current placements.
             </p>
           </CardContent>
@@ -988,14 +988,14 @@ function HomePage({ user, isAdmin, signIn, signUp, signInWithGoogle, signInWithG
         />
       </section>
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-3 md:grid-cols-3 md:gap-4">
         {[
           ["💩", "Pooplist", "Ranked levels that are considered possible."],
           ["💧", "Peelist", "Ranked levels that are considered impossible."],
           ["🧻", "Requests", "Signed-in users can suggest additions, removals, or edits for admin review."],
         ].map(([emoji, title, body]) => (
-          <Card key={title} className="rounded-[1.7rem] border-white/10 bg-white/[0.04] text-slate-100">
-            <CardContent className="p-6">
+          <Card key={title} className="rounded-[1.35rem] border-white/10 bg-white/[0.04] text-slate-100 md:rounded-[1.7rem]">
+            <CardContent className="p-4 md:p-6">
               <div className="mb-4 text-4xl">{emoji}</div>
               <h3 className="text-2xl font-black">{title}</h3>
               <p className="mt-2 text-slate-400">{body}</p>
@@ -1004,7 +1004,7 @@ function HomePage({ user, isAdmin, signIn, signUp, signInWithGoogle, signInWithG
         ))}
       </section>
 
-      <section className="rounded-[2rem] border border-white/10 bg-slate-950/60 p-6 text-slate-300">
+      <section className="rounded-[1.5rem] border border-white/10 bg-slate-950/60 p-4 text-slate-300 md:rounded-[2rem] md:p-6">
         <h3 className="text-xl font-black text-white">Security model</h3>
         <p className="mt-2 text-sm leading-6">
           Level editing is protected by Supabase Auth and database Row Level Security. The frontend only shows buttons for admins, but the database still rejects unauthorized inserts, edits, approvals, and deletions.
@@ -1020,7 +1020,7 @@ function HomePage({ user, isAdmin, signIn, signUp, signInWithGoogle, signInWithG
         />
       )}
 
-      <footer className="rounded-[2rem] border border-yellow-300/30 bg-yellow-300/10 p-6 text-yellow-100">
+      <footer className="rounded-[1.5rem] border border-yellow-300/30 bg-yellow-300/10 p-4 text-yellow-100 md:rounded-[2rem] md:p-6">
         <h3 className="text-xl font-black">Disclaimer</h3>
         <p className="mt-2 text-sm leading-6">
           This website is a joke. The PeePooList, The Pooplist, and The Peelist are parody rankings and should not be taken seriously, used for drama, or treated as an actual official Geometry Dash Demonlist. Please laugh responsibly.
@@ -1066,7 +1066,7 @@ function LevelCard({ level, index, listType, removeMode, onRemove, reorderMode, 
         if (removeMode || reorderMode || isDragging || !level.level_url) return;
         openLevelUrl(level.level_url);
       }}
-      className={`group relative mx-auto flex min-h-[300px] w-full max-w-[800px] flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-gradient-to-br ${colors} shadow-2xl shadow-black/25 md:min-h-[300px] md:flex-row ${draggable ? "cursor-grab active:cursor-grabbing" : level.level_url ? "cursor-pointer" : ""} ${isDragging ? "z-30 ring-2 ring-yellow-300/70" : ""}`}
+      className={`group relative mx-auto flex min-h-0 w-full max-w-[800px] flex-col overflow-hidden rounded-[1.5rem] border border-white/10 bg-gradient-to-br ${colors} shadow-2xl shadow-black/25 md:min-h-[300px] md:flex-row md:rounded-[2rem] ${draggable ? "cursor-grab active:cursor-grabbing" : level.level_url ? "cursor-pointer" : ""} ${isDragging ? "z-30 ring-2 ring-yellow-300/70" : ""}`}
     >
       {reorderMode && (
         <div className="absolute right-4 top-4 z-10 flex items-center gap-2 rounded-2xl bg-black/55 px-3 py-2 text-xs font-bold text-yellow-100 backdrop-blur">
@@ -1085,19 +1085,19 @@ function LevelCard({ level, index, listType, removeMode, onRemove, reorderMode, 
         </button>
       )}
 
-      <div className="flex w-full flex-col justify-center gap-3 p-5 md:w-[230px] md:p-7">
+      <div className="flex w-full flex-row items-center justify-between gap-3 p-4 md:w-[230px] md:flex-col md:items-start md:justify-center md:p-7">
         <div className="flex items-center gap-2 text-sm uppercase tracking-[0.28em] text-slate-400">
           <Crown className="h-4 w-4 text-yellow-300" /> Top
         </div>
-        <div className="text-7xl font-black leading-none text-white drop-shadow-lg">#{index + 1}</div>
+        <div className="text-5xl font-black leading-none text-white drop-shadow-lg md:text-7xl">#{index + 1}</div>
       </div>
 
-      <div className="relative h-48 overflow-hidden border-y border-white/10 md:min-h-[300px] md:w-[260px] md:self-stretch md:border-x md:border-y-0">
+      <div className="relative h-36 overflow-hidden border-y border-white/10 sm:h-44 md:min-h-[300px] md:w-[260px] md:self-stretch md:border-x md:border-y-0">
         <img src={imageFor(level, index, listType)} alt={`${level.name} thumbnail`} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
       </div>
 
-      <div className="flex flex-1 flex-col justify-center p-6">
+      <div className="flex flex-1 flex-col justify-center p-4 md:p-6">
         <h3
           className="font-black leading-tight break-words [overflow-wrap:anywhere]"
           style={{
@@ -1106,12 +1106,12 @@ function LevelCard({ level, index, listType, removeMode, onRemove, reorderMode, 
         >
           {level.name}
         </h3>
-        <div className="mt-4 flex flex-wrap gap-2 text-sm">
+        <div className="mt-3 flex flex-wrap gap-2 text-xs sm:text-sm md:mt-4">
           <Badge className="rounded-xl bg-cyan-500/20 text-cyan-200">Creator: {level.creator || "Unknown"}</Badge>
           <Badge className="rounded-xl bg-emerald-500/20 text-emerald-200">Verifier: {level.verifier || "Unknown"}</Badge>
           {level.level_url && <Badge className="rounded-xl bg-blue-500/20 text-blue-200">Click to open</Badge>}
         </div>
-        <p className="mt-4 text-sm text-slate-400">
+        <p className="mt-3 text-xs text-slate-400 md:mt-4 md:text-sm">
           {listType === "pooplist" ? "Marked as possible and currently placed on the ranked list." : "Marked as impossible and currently placed on the ranked list."}
         </p>
       </div>
@@ -1143,20 +1143,20 @@ function LevelEditCard({ level, index, listType, draggable, isDragging, onDragSt
         onDragOver={onDragOver}
         onDrop={onDrop}
         onDragEnd={onDragEnd}
-        className={`group relative flex min-h-[300px] w-full flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-gradient-to-br ${colors} shadow-2xl shadow-black/25 md:min-h-[300px] md:flex-row ${draggable ? "cursor-grab active:cursor-grabbing" : ""} ${isDragging ? "z-30 ring-2 ring-yellow-300/70" : ""}`}
+        className={`group relative flex min-h-0 w-full flex-col overflow-hidden rounded-[1.5rem] border border-white/10 bg-gradient-to-br ${colors} shadow-2xl shadow-black/25 md:min-h-[300px] md:flex-row md:rounded-[2rem] ${draggable ? "cursor-grab active:cursor-grabbing" : ""} ${isDragging ? "z-30 ring-2 ring-yellow-300/70" : ""}`}
       >
         <div className="absolute right-4 top-4 z-10 flex items-center gap-2 rounded-2xl bg-black/55 px-3 py-2 text-xs font-bold text-yellow-100 backdrop-blur">
           <GripVertical className="h-4 w-4" /> Drag to reorder
         </div>
 
-        <div className="flex w-full flex-col justify-center gap-3 p-5 md:w-[190px] md:p-7">
+        <div className="flex w-full flex-row items-center justify-between gap-3 p-4 md:w-[190px] md:flex-col md:items-start md:justify-center md:p-7">
           <div className="flex items-center gap-2 text-sm uppercase tracking-[0.28em] text-slate-400">
             <Crown className="h-4 w-4 text-yellow-300" /> Top
           </div>
-          <div className="text-6xl font-black leading-none text-white drop-shadow-lg">#{index + 1}</div>
+          <div className="text-5xl font-black leading-none text-white drop-shadow-lg md:text-6xl">#{index + 1}</div>
         </div>
 
-        <label htmlFor={fileInputId} className="relative h-48 cursor-pointer overflow-hidden border-y border-white/10 md:min-h-[300px] md:w-[240px] md:self-stretch md:border-x md:border-y-0">
+        <label htmlFor={fileInputId} className="relative h-36 cursor-pointer overflow-hidden border-y border-white/10 sm:h-44 md:min-h-[300px] md:w-[240px] md:self-stretch md:border-x md:border-y-0">
           <img src={imageFor(level, index, listType)} alt={`${level.name} thumbnail`} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
           <div className="absolute inset-0 grid place-items-center bg-black/45 opacity-0 transition group-hover:opacity-100">
             <span className="inline-flex items-center rounded-2xl bg-white/15 px-4 py-2 text-sm font-bold text-white backdrop-blur">
@@ -1230,8 +1230,8 @@ function AddRemoveRequestForm({ listType, onSubmit, onCancel, mode = "admin", us
   }
 
   return (
-    <Card className="rounded-[2rem] border-white/10 bg-slate-950/95 text-slate-100 shadow-2xl shadow-black/30">
-      <CardContent className="p-6">
+    <Card className="rounded-[1.5rem] border-white/10 bg-slate-950/95 text-slate-100 shadow-2xl shadow-black/30 md:rounded-[2rem]">
+      <CardContent className="p-4 md:p-6">
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
             <h3 className="text-2xl font-black">{mode === "admin" ? "Add a level" : "Submit a list request"}</h3>
@@ -1385,7 +1385,7 @@ function EditLevelsPanel({ listType, levels, isAdmin, user, uploadThumbnail, onA
   }
 
   return (
-    <Card className="rounded-[2rem] border-white/10 bg-slate-950/95 text-slate-100 shadow-2xl shadow-black/30">
+    <Card className="rounded-[1.5rem] border-white/10 bg-slate-950/95 text-slate-100 shadow-2xl shadow-black/30 md:rounded-[2rem]">
       <CardContent className="space-y-6 p-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
@@ -1489,8 +1489,8 @@ function EditLevelsPanel({ listType, levels, isAdmin, user, uploadThumbnail, onA
 
 function RequestsPanel({ requests, onApprove, onDeny }) {
   return (
-    <Card className="rounded-[2rem] border-white/10 bg-slate-950/95 text-slate-100 shadow-2xl shadow-black/30">
-      <CardContent className="p-6">
+    <Card className="rounded-[1.5rem] border-white/10 bg-slate-950/95 text-slate-100 shadow-2xl shadow-black/30 md:rounded-[2rem]">
+      <CardContent className="p-4 md:p-6">
         <div className="mb-5 flex items-center gap-3">
           <Inbox className="h-6 w-6 text-yellow-200" />
           <div>
@@ -1507,7 +1507,7 @@ function RequestsPanel({ requests, onApprove, onDeny }) {
               <div key={request.id} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <div>
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex w-full items-center gap-2 overflow-x-auto pb-1 md:w-auto md:flex-wrap md:overflow-visible md:pb-0">
                       <Badge className={request.action === "add" ? "rounded-xl bg-emerald-500/20 text-emerald-200" : request.action === "edit" ? "rounded-xl bg-blue-500/20 text-blue-200" : "rounded-xl bg-red-500/20 text-red-200"}>
                         {String(request.action).toUpperCase()}
                       </Badge>
@@ -1563,17 +1563,17 @@ function ListPage({ listType, levels, isAdmin, user, requests, addLevel, removeL
 
   return (
     <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-      <section className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-6 shadow-2xl shadow-black/20 md:p-8">
+      <section className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4 shadow-2xl shadow-black/20 md:rounded-[2rem] md:p-8">
         <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
           <div>
             <Badge className={listType === "pooplist" ? "mb-4 rounded-xl bg-amber-500/20 text-amber-200" : "mb-4 rounded-xl bg-yellow-300/20 text-yellow-100"}>
               {levels.length} ranked levels
             </Badge>
-            <h2 className="text-5xl font-black tracking-tight md:text-7xl">{title}</h2>
+            <h2 className="text-4xl font-black tracking-tight md:text-7xl">{title}</h2>
             <p className="mt-3 max-w-2xl text-slate-300">{subtitle}</p>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap">
             <Button onClick={() => setShowRequest((value) => !value)} variant="secondary" className="rounded-2xl">
               <Send className="mr-2 h-4 w-4" />Submit request
             </Button>
