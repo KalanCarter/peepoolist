@@ -1074,12 +1074,17 @@ function SiteShell({ children, tab, setTab, isAdmin, user, profile, signOut, del
             <Button variant={tab === "peelist" ? "default" : "secondary"} onClick={() => setTab("peelist")} className="rounded-2xl">
               The Peelist
             </Button>
-            <Button variant={tab === "rules" ? "default" : "secondary"} onClick={() => setTab("rules")} className="rounded-2xl">
-              Rules
-            </Button>
             <Button variant={tab === "changelog" ? "default" : "secondary"} onClick={() => setTab("changelog")} className="rounded-2xl">
               Changelog
             </Button>
+            <Button variant={tab === "stats" ? "default" : "secondary"} onClick={() => setTab("stats")} className="rounded-2xl">
+              Stats
+            </Button>
+            {isAdmin && (
+              <Button variant={tab === "admin" ? "default" : "secondary"} onClick={() => setTab("admin")} className="rounded-2xl">
+                Admin
+              </Button>
+            )}
             {user && (
               <Button variant={tab === "my-requests" ? "default" : "secondary"} onClick={() => setTab("my-requests")} className="rounded-2xl">
                 My Requests
@@ -1125,6 +1130,18 @@ function SiteShell({ children, tab, setTab, isAdmin, user, profile, signOut, del
           <button onClick={() => setTab("changelog")} className="font-semibold text-slate-200 hover:text-white">
             Changelog
           </button>
+          <span className="text-slate-700">•</span>
+          <button onClick={() => setTab("stats")} className="font-semibold text-slate-200 hover:text-white">
+            Stats
+          </button>
+          {isAdmin && (
+            <>
+              <span className="text-slate-700">•</span>
+              <button onClick={() => setTab("admin")} className="font-semibold text-slate-200 hover:text-white">
+                Admin
+              </button>
+            </>
+          )}
           <span className="text-slate-700">•</span>
           <button onClick={() => setTab("privacy")} className="font-semibold text-slate-200 hover:text-white">
             Privacy Policy
@@ -1901,6 +1918,249 @@ function ChangelogPage({ entries, chatMessages, user, isAdmin, onAddEntry, onDel
   );
 }
 
+
+
+function StatCard({ label, value, body, tone = "slate" }) {
+  const tones = {
+    slate: "border-white/10 bg-white/[0.04] text-slate-200",
+    emerald: "border-emerald-300/20 bg-emerald-500/10 text-emerald-100",
+    yellow: "border-yellow-300/20 bg-yellow-300/10 text-yellow-100",
+    cyan: "border-cyan-300/20 bg-cyan-500/10 text-cyan-100",
+    red: "border-red-300/20 bg-red-500/10 text-red-100",
+    purple: "border-purple-300/20 bg-purple-500/10 text-purple-100",
+  };
+
+  return (
+    <Card className={cn("rounded-[1.7rem] text-slate-100", tones[tone] || tones.slate)}>
+      <CardContent className="p-5">
+        <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate-400">{label}</p>
+        <p className="mt-2 text-4xl font-black text-white">{value}</p>
+        {body && <p className="mt-2 text-sm leading-6 text-slate-400">{body}</p>}
+      </CardContent>
+    </Card>
+  );
+}
+
+function StatsPage({ levels, requests, reports, statusRequests, changelogEntries, chatMessages, publicProfiles, userBadges, isAdmin, setTab }) {
+  const poopLevels = levels.pooplist || [];
+  const peeLevels = levels.peelist || [];
+  const allLevels = [
+    ...poopLevels.map((level) => ({ ...level, list_name: "Pooplist" })),
+    ...peeLevels.map((level) => ({ ...level, list_name: "Peelist" })),
+  ];
+  const newestLevel = [...allLevels].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))[0];
+  const newestChange = [...(changelogEntries || [])].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))[0];
+  const pendingReports = (reports || []).filter((report) => report.status === "pending");
+  const pendingRequests = (requests || []).filter((request) => request.status === "pending");
+  const pendingStatus = statusRequests || [];
+  const totalBadges = (userBadges || []).length;
+  const badgeLeaders = [...(publicProfiles || [])]
+    .map((profile) => ({
+      ...profile,
+      badgeCount: (userBadges || []).filter((badge) => String(badge.user_id) === String(profile.user_id)).length,
+    }))
+    .sort((a, b) => b.badgeCount - a.badgeCount)
+    .slice(0, 5);
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+      <section className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-6 shadow-2xl shadow-black/20 md:p-8">
+        <Badge className="mb-4 rounded-xl bg-purple-500/20 text-purple-200">Site stats</Badge>
+        <h2 className="text-5xl font-black tracking-tight md:text-7xl">Stats</h2>
+        <p className="mt-3 max-w-2xl text-slate-300">A live-ish dashboard for PeePooList levels, profiles, updates, chat, and moderation activity.</p>
+      </section>
+
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label="Pooplist levels" value={poopLevels.length} tone="yellow" body="Possible levels currently ranked." />
+        <StatCard label="Peelist levels" value={peeLevels.length} tone="cyan" body="Impossible levels currently ranked." />
+        <StatCard label="Public profiles" value={(publicProfiles || []).length} tone="emerald" body="Users with site profiles loaded." />
+        <StatCard label="Badges awarded" value={totalBadges} tone="purple" body="Admin badges plus achievement badges." />
+      </section>
+
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label="Changelog posts" value={(changelogEntries || []).length} body="Site updates and list changes." />
+        <StatCard label="Chat messages" value={(chatMessages || []).length} body="Visible public chat messages." />
+        <StatCard label="Pending reports" value={isAdmin ? pendingReports.length : "Admin"} tone={pendingReports.length ? "red" : "slate"} body={isAdmin ? "Reports waiting for review." : "Only admins can see this count."} />
+        <StatCard label="Pending requests" value={isAdmin ? pendingRequests.length + pendingStatus.length : "Admin"} tone={pendingRequests.length + pendingStatus.length ? "yellow" : "slate"} body={isAdmin ? "Level and status requests waiting." : "Only admins can see this count."} />
+      </section>
+
+      <section className="grid gap-6 lg:grid-cols-2">
+        <Card className="rounded-[2rem] border-white/10 bg-slate-950/80 text-slate-100 shadow-2xl shadow-black/30">
+          <CardContent className="p-6">
+            <h3 className="text-2xl font-black">Newest level</h3>
+            {newestLevel ? (
+              <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                <Badge className="rounded-xl bg-white/10 text-white">{newestLevel.list_name}</Badge>
+                <h4 className="mt-2 text-2xl font-black text-white">#{newestLevel.rank} {newestLevel.name}</h4>
+                <p className="mt-1 text-sm text-slate-400">Creator: {newestLevel.creator || "Unknown"} · Verifier: {newestLevel.verifier || "Unknown"}</p>
+                <Button onClick={() => setTab(levelDetailTab(newestLevel.id))} className="mt-4 rounded-2xl">View level page</Button>
+              </div>
+            ) : (
+              <div className="mt-4 rounded-2xl border border-dashed border-white/15 p-6 text-center text-slate-500">No levels loaded yet.</div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-[2rem] border-white/10 bg-slate-950/80 text-slate-100 shadow-2xl shadow-black/30">
+          <CardContent className="p-6">
+            <h3 className="text-2xl font-black">Newest update</h3>
+            {newestChange ? (
+              <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                <Badge className="rounded-xl bg-cyan-500/20 text-cyan-200">{String(newestChange.kind || "update").toUpperCase()}</Badge>
+                <h4 className="mt-2 text-2xl font-black text-white">{newestChange.title}</h4>
+                <p className="mt-1 text-xs text-slate-500">{formatDateTime(newestChange.created_at)}</p>
+                {newestChange.body && <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-300">{newestChange.body}</p>}
+                <Button onClick={() => setTab("changelog")} variant="secondary" className="mt-4 rounded-2xl">Open changelog</Button>
+              </div>
+            ) : (
+              <div className="mt-4 rounded-2xl border border-dashed border-white/15 p-6 text-center text-slate-500">No changelog entries yet.</div>
+            )}
+          </CardContent>
+        </Card>
+      </section>
+
+      <Card className="rounded-[2rem] border-white/10 bg-slate-950/80 text-slate-100 shadow-2xl shadow-black/30">
+        <CardContent className="p-6">
+          <h3 className="text-2xl font-black">Badge leaders</h3>
+          <p className="mt-1 text-sm text-slate-400">Users with the most awarded badges.</p>
+          <div className="mt-4 space-y-3">
+            {badgeLeaders.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-white/15 p-6 text-center text-slate-500">No public profiles yet.</div>
+            ) : (
+              badgeLeaders.map((profile) => (
+                <button key={profile.user_id} onClick={() => setTab(userProfileTab(profile.handle || profile.user_id))} className="flex w-full items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-left transition hover:bg-white/[0.07]">
+                  <div>
+                    <p className="font-black text-white">{profile.display_name || profile.handle || "Unnamed user"}</p>
+                    <p className="text-sm text-slate-500">{profile.handle ? `@${profile.handle}` : profile.user_id}</p>
+                  </div>
+                  <Badge className="rounded-xl bg-purple-500/20 text-purple-200">{profile.badgeCount} badge{profile.badgeCount === 1 ? "" : "s"}</Badge>
+                </button>
+              ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+}
+
+function AdminDashboardPage({ isAdmin, levels, requests, statusRequests, reports, chatMessages, changelogEntries, publicProfiles, userBadges, setTab, onApproveRequest, onDenyRequest, onApproveStatusRequest, onDenyStatusRequest, onResolveReport, onDismissReport, onHideChatMessage, onDeleteChangelogEntry }) {
+  if (!isAdmin) {
+    return (
+      <InfoPageShell title="Admin only" eyebrow="Locked">
+        <p>You need admin access to view the PeePooList admin dashboard.</p>
+        <Button onClick={() => setTab("home")} className="rounded-2xl">Back home</Button>
+      </InfoPageShell>
+    );
+  }
+
+  const pendingLevelRequests = (requests || []).filter((request) => request.status === "pending");
+  const pendingReports = (reports || []).filter((report) => report.status === "pending");
+  const recentChat = (chatMessages || []).slice(0, 8);
+  const recentUpdates = (changelogEntries || []).slice(0, 6);
+  const totalLevels = (levels.pooplist || []).length + (levels.peelist || []).length;
+  const profilesWithBadges = (publicProfiles || []).filter((profile) => (userBadges || []).some((badge) => String(badge.user_id) === String(profile.user_id)));
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+      <section className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-6 shadow-2xl shadow-black/20 md:p-8">
+        <Badge className="mb-4 rounded-xl bg-yellow-300 text-black">Admin dashboard</Badge>
+        <h2 className="text-5xl font-black tracking-tight md:text-7xl">Admin</h2>
+        <p className="mt-3 max-w-2xl text-slate-300">One place for moderation, request queues, reports, chat cleanup, and quick site checks.</p>
+      </section>
+
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label="Total levels" value={totalLevels} tone="cyan" />
+        <StatCard label="Level requests" value={pendingLevelRequests.length} tone={pendingLevelRequests.length ? "yellow" : "slate"} />
+        <StatCard label="Status requests" value={(statusRequests || []).length} tone={(statusRequests || []).length ? "yellow" : "slate"} />
+        <StatCard label="Reports" value={pendingReports.length} tone={pendingReports.length ? "red" : "slate"} />
+      </section>
+
+      <section className="grid gap-3 md:grid-cols-5">
+        <Button onClick={() => setTab("pooplist")} className="rounded-2xl">Pooplist tools</Button>
+        <Button onClick={() => setTab("peelist")} className="rounded-2xl">Peelist tools</Button>
+        <Button onClick={() => setTab("changelog")} variant="secondary" className="rounded-2xl">Post update</Button>
+        <Button onClick={() => setTab("stats")} variant="secondary" className="rounded-2xl">View stats</Button>
+        <Button onClick={() => setTab("home")} variant="secondary" className="rounded-2xl">Home</Button>
+      </section>
+
+      <RequestsPanel requests={pendingLevelRequests} onApprove={onApproveRequest} onDeny={onDenyRequest} />
+      <StatusRequestsPanel statusRequests={statusRequests || []} onApprove={onApproveStatusRequest} onDeny={onDenyStatusRequest} />
+      <ReportsPanel reports={pendingReports} onResolve={onResolveReport} onDismiss={onDismissReport} />
+
+      <section className="grid gap-6 lg:grid-cols-2">
+        <Card className="rounded-[2rem] border-white/10 bg-slate-950/80 text-slate-100 shadow-2xl shadow-black/30">
+          <CardContent className="p-6">
+            <h3 className="text-2xl font-black">Recent public chat</h3>
+            <p className="mt-1 text-sm text-slate-400">Quick moderation for the public chat.</p>
+            <div className="mt-4 space-y-3">
+              {recentChat.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-white/15 p-6 text-center text-slate-500">No chat messages yet.</div>
+              ) : (
+                recentChat.map((message) => (
+                  <div key={message.id} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs text-slate-500">{message.display_name || "User"} · {formatDateTime(message.created_at)}</p>
+                        <p className="mt-1 whitespace-pre-wrap text-sm text-slate-200">{message.message}</p>
+                      </div>
+                      <Button onClick={() => onHideChatMessage(message)} variant="destructive" className="rounded-2xl px-3">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-[2rem] border-white/10 bg-slate-950/80 text-slate-100 shadow-2xl shadow-black/30">
+          <CardContent className="p-6">
+            <h3 className="text-2xl font-black">Recent changelog</h3>
+            <p className="mt-1 text-sm text-slate-400">Delete mistaken update posts here.</p>
+            <div className="mt-4 space-y-3">
+              {recentUpdates.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-white/15 p-6 text-center text-slate-500">No updates yet.</div>
+              ) : (
+                recentUpdates.map((entry) => (
+                  <div key={entry.id} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <Badge className="rounded-xl bg-cyan-500/20 text-cyan-200">{String(entry.kind || "update").toUpperCase()}</Badge>
+                        <h4 className="mt-2 font-black text-white">{entry.title}</h4>
+                        <p className="mt-1 text-xs text-slate-500">{formatDateTime(entry.created_at)}</p>
+                      </div>
+                      <Button onClick={() => onDeleteChangelogEntry(entry)} variant="destructive" className="rounded-2xl px-3">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      <Card className="rounded-[2rem] border-white/10 bg-slate-950/80 text-slate-100 shadow-2xl shadow-black/30">
+        <CardContent className="p-6">
+          <h3 className="text-2xl font-black">User/profile overview</h3>
+          <p className="mt-1 text-sm text-slate-400">Profiles loaded: {(publicProfiles || []).length}. Profiles with badges: {profilesWithBadges.length}.</p>
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            {(publicProfiles || []).slice(0, 8).map((profile) => (
+              <button key={profile.user_id} onClick={() => setTab(userProfileTab(profile.handle || profile.user_id))} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-left transition hover:bg-white/[0.07]">
+                <p className="font-black text-white">{profile.display_name || profile.handle || "Unnamed user"}</p>
+                <p className="text-sm text-slate-500">{profile.handle ? `@${profile.handle}` : profile.user_id}</p>
+                <p className="mt-2 text-xs text-slate-400">{(userBadges || []).filter((badge) => String(badge.user_id) === String(profile.user_id)).length} badge{(userBadges || []).filter((badge) => String(badge.user_id) === String(profile.user_id)).length === 1 ? "" : "s"}</p>
+              </button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+}
 
 function LevelDetailPage({ level, index, listType, changelogEntries, user, onBack, onSubmitReport }) {
   const [copied, setCopied] = useState(false);
@@ -3850,6 +4110,46 @@ export default function PeePooListWebsite() {
     if (tab === "rules") return <RulesPage />;
     if (tab === "privacy") return <PrivacyPolicyPage />;
     if (tab === "contact") return <ContactPage />;
+    if (tab === "stats") {
+      return (
+        <StatsPage
+          levels={levels}
+          requests={requests}
+          reports={reports}
+          statusRequests={statusRequests}
+          changelogEntries={changelogEntries}
+          chatMessages={chatMessages}
+          publicProfiles={publicProfiles}
+          userBadges={userBadges}
+          isAdmin={isAdmin}
+          setTab={setTab}
+        />
+      );
+    }
+    if (tab === "admin") {
+      return (
+        <AdminDashboardPage
+          isAdmin={isAdmin}
+          levels={levels}
+          requests={requests}
+          statusRequests={statusRequests}
+          reports={reports}
+          chatMessages={chatMessages}
+          changelogEntries={changelogEntries}
+          publicProfiles={publicProfiles}
+          userBadges={userBadges}
+          setTab={setTab}
+          onApproveRequest={approveRequest}
+          onDenyRequest={denyRequest}
+          onApproveStatusRequest={approveStatusRequest}
+          onDenyStatusRequest={denyStatusRequest}
+          onResolveReport={resolveReport}
+          onDismissReport={dismissReport}
+          onHideChatMessage={hideChatMessage}
+          onDeleteChangelogEntry={deleteChangelogEntry}
+        />
+      );
+    }
     if (tab === "changelog") {
       return (
         <ChangelogPage
