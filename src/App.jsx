@@ -925,6 +925,18 @@ function MoreMenu({ tab, setTab, user, isAdmin }) {
             exit={{ opacity: 0, y: -8, scale: 0.98 }}
             className="fixed inset-x-3 top-28 z-50 max-h-[65vh] overflow-y-auto overflow-x-hidden rounded-[1.5rem] border border-white/10 bg-slate-950/95 p-2 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-12 sm:w-56 sm:max-h-none sm:overflow-visible"
           >
+            <div className="mb-2 flex items-center justify-between gap-3 px-2 py-1">
+              <span className="text-sm font-black text-white">Menu</span>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="grid h-8 w-8 place-items-center rounded-xl bg-white/10 text-slate-200 transition hover:bg-white/15 hover:text-white"
+                aria-label="Close menu"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
             {items.map((item) => (
               <button
                 key={item.tab}
@@ -998,6 +1010,21 @@ function ProfileMenu({ tab, user, isAdmin, profile, onSignOut, onDeleteAccount, 
             exit={{ opacity: 0, y: -8, scale: 0.98 }}
             className="fixed inset-x-3 top-28 z-50 max-h-[65vh] overflow-y-auto overflow-x-hidden rounded-[2rem] border border-white/10 bg-slate-950/95 p-4 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-12 sm:w-64 sm:max-h-none sm:overflow-visible"
           >
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h3 className="text-lg font-black">Profile</h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  setActivePanel("");
+                }}
+                className="grid h-8 w-8 place-items-center rounded-xl bg-white/10 text-slate-200 transition hover:bg-white/15 hover:text-white"
+                aria-label="Close profile menu"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
             {user ? (
               <>
                 <div className="mb-3 flex gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
@@ -1128,11 +1155,21 @@ function NotificationsMenu({ tab, user, isAdmin, requests, statusRequests, repor
           >
             <div className="mb-3 flex items-center justify-between gap-3">
               <h3 className="text-lg font-black">Notifications</h3>
-              {!isAdmin && userItems.some((item) => !item.is_read) && (
-                <button onClick={onMarkNotificationsRead} className="text-xs font-bold text-yellow-200 hover:text-yellow-100">
-                  Mark read
+              <div className="flex items-center gap-2">
+                {!isAdmin && userItems.some((item) => !item.is_read) && (
+                  <button onClick={onMarkNotificationsRead} className="text-xs font-bold text-yellow-200 hover:text-yellow-100">
+                    Mark read
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="grid h-8 w-8 place-items-center rounded-xl bg-white/10 text-slate-200 transition hover:bg-white/15 hover:text-white"
+                  aria-label="Close notifications"
+                >
+                  <X className="h-4 w-4" />
                 </button>
-              )}
+              </div>
             </div>
 
             {!user ? (
