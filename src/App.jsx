@@ -173,6 +173,22 @@ function openLevelUrl(url) {
   window.open(safeUrl, "_blank", "noopener,noreferrer");
 }
 
+function levelDetailTab(levelId) {
+  return `level:${String(levelId || "")}`;
+}
+
+function initialTabFromHash() {
+  if (typeof window === "undefined") return "home";
+  const match = window.location.hash.match(/^#\/level\/([^?#]+)/);
+  return match ? levelDetailTab(decodeURIComponent(match[1])) : "home";
+}
+
+function levelShareUrl(levelId) {
+  if (typeof window === "undefined") return "";
+  const path = `${window.location.origin}${window.location.pathname}`;
+  return `${path}#/level/${encodeURIComponent(String(levelId || ""))}`;
+}
+
 function imageFor(level, index, listType) {
   if (level.thumbnail_url) return level.thumbnail_url;
   const colors = listType === "pooplist" ? ["#7c3f16", "#f59e0b"] : ["#b7791f", "#fde047"];
@@ -1047,6 +1063,7 @@ function HomePage({ user, isAdmin, signIn, signUp, signInWithGoogle, signInWithG
         />
       </section>
 
+
       <section className="grid gap-4 md:grid-cols-3">
         {[
           ["💩", "Pooplist", "Ranked levels that are considered possible."],
@@ -1559,7 +1576,146 @@ function ChangelogPage({ entries, chatMessages, user, isAdmin, onAddEntry, onDel
   );
 }
 
-function LevelCard({ level, index, listType, removeMode, onRemove, onReport, reorderMode, draggable, isDragging, onDragStart, onDragOver, onDrop, onDragEnd }) {
+
+function LevelDetailPage({ level, index, listType, changelogEntries, user, onBack, onSubmitReport }) {
+  const [copied, setCopied] = useState(false);
+  const [isReporting, setIsReporting] = useState(false);
+  const listName = listType === "pooplist" ? "The Pooplist" : "The Peelist";
+  const statusText = listType === "pooplist" ? "Possible level" : "Impossible level";
+  const rank = Number(level?.rank || index + 1 || 1);
+  const relatedChanges = (changelogEntries || [])
+    .filter((entry) => `${entry.title || ""} ${entry.body || ""}`.toLowerCase().includes(String(level?.name || "").toLowerCase()))
+    .slice(0, 5);
+
+  async function copyShareLink() {
+    const url = levelShareUrl(level.id);
+    if (!url) return;
+
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1400);
+    } catch {
+      window.prompt("Copy this level link:", url);
+    }
+  }
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+      <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.04] shadow-2xl shadow-black/25">
+        <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="relative min-h-[260px] overflow-hidden lg:min-h-[520px]">
+            <img src={imageFor(level, index, listType)} alt={`${level.name} thumbnail`} className="h-full min-h-[260px] w-full object-cover lg:min-h-[520px]" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#090d18] via-[#090d18]/30 to-transparent" />
+            <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8">
+              <Badge className={listType === "pooplist" ? "mb-4 rounded-xl bg-amber-500/20 text-amber-200" : "mb-4 rounded-xl bg-yellow-300/20 text-yellow-100"}>
+                {listName} · #{rank}
+              </Badge>
+              <h2 className="break-words text-4xl font-black leading-tight text-white md:text-7xl">{level.name}</h2>
+              <p className="mt-3 max-w-2xl text-slate-300">{statusText} detail page for sharing, checking info, and reporting problems.</p>
+            </div>
+          </div>
+
+          <aside className="space-y-4 border-t border-white/10 bg-slate-950/85 p-6 lg:border-l lg:border-t-0">
+            <Button onClick={onBack} variant="secondary" className="w-full rounded-2xl">
+              Back to {listName}
+            </Button>
+
+            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+              <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Rank</p>
+              <p className="mt-1 text-5xl font-black text-white">#{rank}</p>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Creator</p>
+                <p className="mt-1 break-words text-lg font-black text-cyan-100">{level.creator || "Unknown"}</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Verifier</p>
+                <p className="mt-1 break-words text-lg font-black text-emerald-100">{level.verifier || "Unknown"}</p>
+              </div>
+            </div>
+
+            {level.level_url ? (
+              <Button onClick={() => openLevelUrl(level.level_url)} className="w-full rounded-2xl bg-blue-600 text-white hover:bg-blue-500">
+                Open level link
+              </Button>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-white/15 p-4 text-center text-sm text-slate-500">No level link added yet.</div>
+            )}
+
+            <Button onClick={copyShareLink} variant="secondary" className="w-full rounded-2xl">
+              {copied ? "Copied share link" : "Copy share link"}
+            </Button>
+
+            <Button onClick={() => setIsReporting(true)} variant="destructive" className="w-full rounded-2xl">
+              <AlertTriangle className="mr-2 h-4 w-4" /> Report this level
+            </Button>
+          </aside>
+        </div>
+      </section>
+
+      <AnimatePresence>
+        {isReporting && (
+          <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}>
+            <ReportLevelPanel
+              level={level}
+              user={user}
+              onSubmit={(reportLevel, reasonType, details) => onSubmitReport?.(reportLevel, reasonType, details)}
+              onCancel={() => setIsReporting(false)}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <section className="grid gap-4 md:grid-cols-3">
+        <Card className="rounded-[1.7rem] border-white/10 bg-slate-950/70 text-slate-100">
+          <CardContent className="p-6">
+            <h3 className="text-2xl font-black">List status</h3>
+            <p className="mt-2 text-slate-400">{level.name} is currently listed as a {statusText.toLowerCase()} on {listName}.</p>
+          </CardContent>
+        </Card>
+        <Card className="rounded-[1.7rem] border-white/10 bg-slate-950/70 text-slate-100">
+          <CardContent className="p-6">
+            <h3 className="text-2xl font-black">Shareable page</h3>
+            <p className="mt-2 text-slate-400">Use the copy button to share this exact level page instead of the whole list.</p>
+          </CardContent>
+        </Card>
+        <Card className="rounded-[1.7rem] border-white/10 bg-slate-950/70 text-slate-100">
+          <CardContent className="p-6">
+            <h3 className="text-2xl font-black">Corrections</h3>
+            <p className="mt-2 text-slate-400">Use Submit edit on the list page for fixes, or Report this level for unsafe or broken content.</p>
+          </CardContent>
+        </Card>
+      </section>
+
+      <Card className="rounded-[2rem] border-white/10 bg-slate-950/80 text-slate-100 shadow-2xl shadow-black/30">
+        <CardContent className="p-6">
+          <h3 className="text-2xl font-black">Related changelog entries</h3>
+          <p className="mt-1 text-sm text-slate-400">Entries that mention this level name.</p>
+          <div className="mt-4 space-y-3">
+            {relatedChanges.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-white/15 p-6 text-center text-slate-500">No related changelog entries yet.</div>
+            ) : (
+              relatedChanges.map((entry) => (
+                <div key={entry.id} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h4 className="font-black text-white">{entry.title}</h4>
+                    <span className="text-xs text-slate-500">{formatDateTime(entry.created_at)}</span>
+                  </div>
+                  {entry.body && <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-300">{entry.body}</p>}
+                </div>
+              ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+}
+
+function LevelCard({ level, index, listType, removeMode, onRemove, onReport, onOpenDetails, reorderMode, draggable, isDragging, onDragStart, onDragOver, onDrop, onDragEnd }) {
   const colors = listType === "pooplist" ? "from-amber-950/80 to-slate-900" : "from-yellow-950/70 to-slate-900";
 
   return (
@@ -1592,10 +1748,10 @@ function LevelCard({ level, index, listType, removeMode, onRemove, onReport, reo
       onDrop={onDrop}
       onDragEnd={onDragEnd}
       onClick={() => {
-        if (removeMode || reorderMode || isDragging || !level.level_url) return;
-        openLevelUrl(level.level_url);
+        if (removeMode || reorderMode || isDragging) return;
+        onOpenDetails?.(level);
       }}
-      className={`group relative mx-auto flex min-h-[300px] w-full max-w-[800px] flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-gradient-to-br ${colors} shadow-2xl shadow-black/25 md:min-h-[300px] md:flex-row ${draggable ? "cursor-grab active:cursor-grabbing" : level.level_url ? "cursor-pointer" : ""} ${isDragging ? "z-30 ring-2 ring-yellow-300/70" : ""}`}
+      className={`group relative mx-auto flex min-h-[300px] w-full max-w-[800px] flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-gradient-to-br ${colors} shadow-2xl shadow-black/25 md:min-h-[300px] md:flex-row ${draggable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"} ${isDragging ? "z-30 ring-2 ring-yellow-300/70" : ""}`}
     >
       {reorderMode && (
         <div className="absolute right-4 top-4 z-10 flex items-center gap-2 rounded-2xl bg-black/55 px-3 py-2 text-xs font-bold text-yellow-100 backdrop-blur">
@@ -1638,9 +1794,29 @@ function LevelCard({ level, index, listType, removeMode, onRemove, onReport, reo
         <div className="mt-4 flex flex-wrap gap-2 text-sm">
           <Badge className="rounded-xl bg-cyan-500/20 text-cyan-200">Creator: {level.creator || "Unknown"}</Badge>
           <Badge className="rounded-xl bg-emerald-500/20 text-emerald-200">Verifier: {level.verifier || "Unknown"}</Badge>
-          {level.level_url && <Badge className="rounded-xl bg-blue-500/20 text-blue-200">Click to open</Badge>}
+          <Badge className="rounded-xl bg-blue-500/20 text-blue-200">Click to view details</Badge>
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
+          <button
+            onClick={(event) => {
+              event.stopPropagation();
+              onOpenDetails?.(level);
+            }}
+            className="inline-flex items-center rounded-xl border border-blue-300/20 bg-blue-500/10 px-3 py-1.5 text-xs font-bold text-blue-200 transition hover:bg-blue-500/20"
+          >
+            Details
+          </button>
+          {level.level_url && (
+            <button
+              onClick={(event) => {
+                event.stopPropagation();
+                openLevelUrl(level.level_url);
+              }}
+              className="inline-flex items-center rounded-xl border border-emerald-300/20 bg-emerald-500/10 px-3 py-1.5 text-xs font-bold text-emerald-200 transition hover:bg-emerald-500/20"
+            >
+              Open link
+            </button>
+          )}
           <button
             onClick={(event) => {
               event.stopPropagation();
@@ -2074,7 +2250,7 @@ function RequestsPanel({ requests, onApprove, onDeny }) {
   );
 }
 
-function ListPage({ listType, levels, isAdmin, user, requests, reports, addLevel, removeLevel, saveEditedLevels, submitRequest, submitEditRequests, submitReport, resolveReport, dismissReport, approveRequest, denyRequest, statusMessage, isConfigured, uploadThumbnail }) {
+function ListPage({ listType, levels, isAdmin, user, requests, reports, addLevel, removeLevel, saveEditedLevels, submitRequest, submitEditRequests, submitReport, resolveReport, dismissReport, approveRequest, denyRequest, statusMessage, isConfigured, uploadThumbnail, onOpenLevel }) {
   const [showAdd, setShowAdd] = useState(false);
   const [showRequest, setShowRequest] = useState(false);
   const [removeMode, setRemoveMode] = useState(false);
@@ -2229,7 +2405,7 @@ function ListPage({ listType, levels, isAdmin, user, requests, reports, addLevel
         )}
         <AnimatePresence>
           {filteredLevels.map((level, index) => (
-            <LevelCard key={level.id} level={level} index={index} listType={listType} removeMode={isAdmin && removeMode} onRemove={submitRemove} onReport={setReportingLevel} reorderMode={false} draggable={false} />
+            <LevelCard key={level.id} level={level} index={index} listType={listType} removeMode={isAdmin && removeMode} onRemove={submitRemove} onReport={setReportingLevel} onOpenDetails={onOpenLevel} reorderMode={false} draggable={false} />
           ))}
         </AnimatePresence>
       </div>
@@ -2238,7 +2414,23 @@ function ListPage({ listType, levels, isAdmin, user, requests, reports, addLevel
 }
 
 export default function PeePooListWebsite() {
-  const [tab, setTab] = useState("home");
+  const [tab, setTabState] = useState(initialTabFromHash);
+
+  function setTab(nextTab) {
+    const safeTab = String(nextTab || "home");
+    setTabState(safeTab);
+
+    if (typeof window !== "undefined") {
+      const basePath = `${window.location.pathname}${window.location.search}`;
+      if (safeTab.startsWith("level:")) {
+        const levelId = safeTab.slice("level:".length);
+        window.history.replaceState({}, document.title, `${basePath}#/level/${encodeURIComponent(levelId)}`);
+      } else if (window.location.hash.startsWith("#/level/")) {
+        window.history.replaceState({}, document.title, basePath);
+      }
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [authEmail, setAuthEmail] = useState("");
@@ -2407,6 +2599,17 @@ export default function PeePooListWebsite() {
 
     setUserRequests(data || []);
   }
+
+  useEffect(() => {
+    function handleHashChange() {
+      const nextTab = initialTabFromHash();
+      if (nextTab.startsWith("level:")) setTabState(nextTab);
+    }
+
+    window.addEventListener("hashchange", handleHashChange);
+    handleHashChange();
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, []);
 
   useEffect(() => {
     if (!supabase) return;
@@ -3148,6 +3351,39 @@ export default function PeePooListWebsite() {
   }
 
   const visiblePage = useMemo(() => {
+    if (tab.startsWith("level:")) {
+      const levelId = tab.slice("level:".length);
+      const allLevels = [
+        ...(levels.pooplist || []).map((level, index) => ({ level, index, listType: "pooplist" })),
+        ...(levels.peelist || []).map((level, index) => ({ level, index, listType: "peelist" })),
+      ];
+      const match = allLevels.find((item) => String(item.level.id) === String(levelId));
+
+      if (match) {
+        return (
+          <LevelDetailPage
+            level={match.level}
+            index={match.index}
+            listType={match.listType}
+            changelogEntries={changelogEntries}
+            user={user}
+            onBack={() => setTab(match.listType)}
+            onSubmitReport={(level, reasonType, details) => submitReport(match.listType, level, reasonType, details)}
+          />
+        );
+      }
+
+      return (
+        <InfoPageShell title="Level not found" eyebrow="Missing level">
+          <p>The level detail page could not be found. It may have been removed or the link may be old.</p>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={() => setTab("pooplist")} className="rounded-2xl">The Pooplist</Button>
+            <Button onClick={() => setTab("peelist")} variant="secondary" className="rounded-2xl">The Peelist</Button>
+          </div>
+        </InfoPageShell>
+      );
+    }
+
     if (tab === "about") return <AboutPage />;
     if (tab === "rules") return <RulesPage />;
     if (tab === "privacy") return <PrivacyPolicyPage />;
@@ -3190,6 +3426,7 @@ export default function PeePooListWebsite() {
           statusMessage={statusMessage}
           isConfigured={isSupabaseConfigured}
           uploadThumbnail={uploadThumbnail}
+          onOpenLevel={(level) => setTab(levelDetailTab(level.id))}
         />
       );
     }
@@ -3215,6 +3452,7 @@ export default function PeePooListWebsite() {
           statusMessage={statusMessage}
           isConfigured={isSupabaseConfigured}
           uploadThumbnail={uploadThumbnail}
+          onOpenLevel={(level) => setTab(levelDetailTab(level.id))}
         />
       );
     }
