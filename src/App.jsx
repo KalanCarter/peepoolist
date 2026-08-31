@@ -516,7 +516,7 @@ function ChangeEmailPanel({ user, onCancel, onChangeEmail }) {
       initial={{ opacity: 0, x: 14, scale: 0.98 }}
       animate={{ opacity: 1, x: 0, scale: 1 }}
       exit={{ opacity: 0, x: 14, scale: 0.98 }}
-      className="absolute right-[17rem] top-12 z-50 max-h-[75vh] w-[330px] overflow-y-auto rounded-[2rem] border border-white/10 bg-slate-950/95 p-5 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl max-md:right-0 max-md:top-12 max-md:w-[calc(100vw-1rem)] max-md:max-w-[22rem]"
+      className="fixed left-2 right-2 top-16 z-50 max-h-[75vh] overflow-y-auto overflow-x-hidden rounded-[2rem] border border-white/10 bg-slate-950/95 p-5 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl md:absolute md:left-auto md:right-[17rem] md:top-12 md:w-[390px]"
     >
       <h3 className="text-lg font-black">Change Email</h3>
       <p className="mt-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-sm text-slate-300">
@@ -644,7 +644,7 @@ function ChangePasswordPanel({ onCancel, onChangePassword }) {
       initial={{ opacity: 0, x: 14, scale: 0.98 }}
       animate={{ opacity: 1, x: 0, scale: 1 }}
       exit={{ opacity: 0, x: 14, scale: 0.98 }}
-      className="absolute right-[17rem] top-12 z-50 max-h-[75vh] w-[330px] overflow-y-auto rounded-[2rem] border border-white/10 bg-slate-950/95 p-5 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl max-md:right-0 max-md:top-12 max-md:w-[calc(100vw-1rem)] max-md:max-w-[22rem]"
+      className="fixed left-2 right-2 top-16 z-50 max-h-[75vh] overflow-y-auto overflow-x-hidden rounded-[2rem] border border-white/10 bg-slate-950/95 p-5 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl md:absolute md:left-auto md:right-[17rem] md:top-12 md:w-[390px]"
     >
       <h3 className="text-lg font-black">Change Password</h3>
 
@@ -728,7 +728,7 @@ function StatusRequestPanel({ onCancel, onSubmitStatusRequest }) {
       initial={{ opacity: 0, x: 14, scale: 0.98 }}
       animate={{ opacity: 1, x: 0, scale: 1 }}
       exit={{ opacity: 0, x: 14, scale: 0.98 }}
-      className="absolute right-[17rem] top-12 z-50 max-h-[75vh] w-[360px] overflow-y-auto rounded-[2rem] border border-white/10 bg-slate-950/95 p-5 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl max-md:right-0 max-md:top-12 max-md:w-[calc(100vw-1rem)] max-md:max-w-[22rem]"
+      className="fixed left-2 right-2 top-16 z-50 max-h-[75vh] overflow-y-auto overflow-x-hidden rounded-[2rem] border border-white/10 bg-slate-950/95 p-5 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl md:absolute md:left-auto md:right-[17rem] md:top-12 md:w-[390px]"
     >
       <div className="flex items-center gap-3">
         <label className="text-sm font-black text-slate-200">Request:</label>
@@ -816,7 +816,7 @@ function PublicProfilePanel({ user, profile, onCancel, onUpdateProfile, onUpload
       initial={{ opacity: 0, x: 14, scale: 0.98 }}
       animate={{ opacity: 1, x: 0, scale: 1 }}
       exit={{ opacity: 0, x: 14, scale: 0.98 }}
-      className="absolute right-[17rem] top-12 z-50 max-h-[75vh] w-[390px] overflow-y-auto rounded-[2rem] border border-white/10 bg-slate-950/95 p-5 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl max-md:right-0 max-md:top-12 max-md:w-[calc(100vw-1rem)] max-md:max-w-[22rem]"
+      className="fixed left-2 right-2 top-16 z-50 max-h-[75vh] overflow-y-auto overflow-x-hidden rounded-[2rem] border border-white/10 bg-slate-950/95 p-5 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl md:absolute md:left-auto md:right-[17rem] md:top-12 md:w-[390px]"
     >
       <h3 className="text-xl font-black">Edit public profile</h3>
       <p className="mt-1 text-xs text-slate-400">This is what other visitors can see on your PeePooList profile.</p>
@@ -927,7 +927,7 @@ function MoreMenu({ tab, setTab, user, isAdmin }) {
             initial={{ opacity: 0, y: -8, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.98 }}
-            className="absolute right-0 top-12 z-50 max-h-[70vh] w-[calc(100vw-1rem)] max-w-[20rem] overflow-y-auto rounded-[1.5rem] border border-white/10 bg-slate-950/95 p-2 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl"
+            className="fixed left-2 right-2 top-16 z-50 max-h-[70vh] overflow-y-auto overflow-x-hidden rounded-[1.5rem] border border-white/10 bg-slate-950/95 p-2 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl sm:absolute sm:left-auto sm:right-0 sm:top-12 sm:w-56"
           >
             {items.map((item) => (
               <button
@@ -1001,7 +1001,7 @@ function ProfileMenu({ tab, user, isAdmin, profile, onSignOut, onDeleteAccount, 
             initial={{ opacity: 0, y: -8, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.98 }}
-            className="absolute right-0 top-12 z-50 max-h-[75vh] w-[calc(100vw-1rem)] max-w-[20rem] overflow-y-auto rounded-[2rem] border border-white/10 bg-slate-950/95 p-4 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl"
+            className="fixed left-2 right-2 top-16 z-50 max-h-[75vh] overflow-y-auto overflow-x-hidden rounded-[2rem] border border-white/10 bg-slate-950/95 p-4 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl sm:absolute sm:left-auto sm:right-0 sm:top-12 sm:w-64"
           >
             {user ? (
               <>
@@ -1129,7 +1129,7 @@ function NotificationsMenu({ tab, user, isAdmin, requests, statusRequests, repor
             initial={{ opacity: 0, y: -8, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.98 }}
-            className="absolute right-0 top-12 z-50 max-h-[75vh] w-[calc(100vw-1rem)] max-w-[22rem] overflow-y-auto rounded-[2rem] border border-white/10 bg-slate-950/95 p-4 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl"
+            className="fixed left-2 right-2 top-16 z-50 max-h-[75vh] overflow-y-auto overflow-x-hidden rounded-[2rem] border border-white/10 bg-slate-950/95 p-4 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl sm:absolute sm:left-auto sm:right-0 sm:top-12 sm:w-80"
           >
             <div className="mb-3 flex items-center justify-between gap-3">
               <h3 className="text-lg font-black">Notifications</h3>
@@ -1254,7 +1254,7 @@ function StatusRequestsPanel({ statusRequests, onApprove, onDeny }) {
 
 function SiteShell({ children, tab, setTab, isAdmin, user, profile, signOut, deleteAccount, changeEmail, changePassword, submitStatusRequest, updateProfile, uploadAvatar, requests, statusRequests, reports, notifications, adminUnreadCount, markNotificationsRead }) {
   return (
-    <div className="min-h-screen bg-[#090d18] text-slate-100 selection:bg-yellow-300 selection:text-black">
+    <div className="min-h-screen overflow-x-hidden bg-[#090d18] text-slate-100 selection:bg-yellow-300 selection:text-black">
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute -top-24 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-yellow-500/10 blur-3xl" />
         <div className="absolute bottom-10 right-0 h-80 w-80 rounded-full bg-fuchsia-500/10 blur-3xl" />
@@ -1272,7 +1272,7 @@ function SiteShell({ children, tab, setTab, isAdmin, user, profile, signOut, del
             </div>
           </button>
 
-          <nav className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+          <nav className="flex min-w-0 shrink-0 items-center gap-1.5 sm:gap-2">
             <Button variant={tab === "home" ? "default" : "secondary"} onClick={() => setTab("home")} className="hidden rounded-2xl sm:inline-flex">
               <Home className="mr-2 h-4 w-4" /> Home
             </Button>
