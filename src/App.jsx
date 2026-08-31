@@ -901,6 +901,7 @@ function MoreMenu({ tab, setTab, user, isAdmin }) {
 
   const items = [
     { tab: "changelog", label: "Changelog + Chat", show: true },
+    { tab: "users", label: "Users", show: true },
     { tab: "my-requests", label: "My Requests", show: Boolean(user) },
     { tab: "rules", label: "Rules", show: true },
     { tab: "about", label: "About", show: true },
@@ -1310,6 +1311,10 @@ function SiteShell({ children, tab, setTab, isAdmin, user, profile, signOut, del
             Stats
           </button>
           <span className="text-slate-700">•</span>
+          <button onClick={() => setTab("users")} className="font-semibold text-slate-200 hover:text-white">
+            Users
+          </button>
+          <span className="text-slate-700">•</span>
           <button onClick={openSupportPage} className="font-semibold text-[#c0ffbf] hover:text-[#d3ffd2]">
             Support
           </button>
@@ -1427,7 +1432,7 @@ function HomePage({ user, isAdmin, signIn, signUp, signInWithGoogle, signInWithG
   const homeStats = [
     ["Pooplist", poopLevels.length, "possible levels", "pooplist"],
     ["Peelist", peeLevels.length, "impossible levels", "peelist"],
-    ["Profiles", (publicProfiles || []).length, "public users", "stats"],
+    ["Profiles", (publicProfiles || []).length, "public users", "users"],
     ["Badges", totalBadges, "earned/awarded", "stats"],
   ];
 
@@ -2244,6 +2249,196 @@ function StatCard({ label, value, body, tone = "slate" }) {
         {body && <p className="mt-2 text-sm leading-6 text-slate-400">{body}</p>}
       </CardContent>
     </Card>
+  );
+}
+
+
+function UsersPage({ publicProfiles, userBadges, chatMessages, levelComments, setTab }) {
+  const [query, setQuery] = useState("");
+  const [sortMode, setSortMode] = useState("badges");
+
+  const profiles = (publicProfiles || []).map((profile) => {
+    const badges = (userBadges || []).filter((badge) => String(badge.user_id) === String(profile.user_id));
+    const achievements = achievementList(profile, badges);
+    const chatCount = (chatMessages || []).filter((message) => String(message.created_by) === String(profile.user_id)).length;
+    const commentCount = (levelComments || []).filter((comment) => String(comment.created_by) === String(profile.user_id)).length;
+
+    return {
+      ...profile,
+      badgeCount: badges.length,
+      achievementCount: achievements.length,
+      chatCount,
+      commentCount,
+      activityCount: chatCount + commentCount,
+    };
+  });
+
+  const filteredProfiles = profiles
+    .filter((profile) => {
+      const search = query.trim().toLowerCase();
+      if (!search) return true;
+
+      return [
+        profile.display_name,
+        profile.handle,
+        profile.bio,
+        roleName(profile.role),
+      ]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(search));
+    })
+    .sort((a, b) => {
+      if (sortMode === "name") return String(a.display_name || a.handle || "").localeCompare(String(b.display_name || b.handle || ""));
+      if (sortMode === "activity") return b.activityCount - a.activityCount || String(a.handle || "").localeCompare(String(b.handle || ""));
+      if (sortMode === "comments") return b.commentCount - a.commentCount || String(a.handle || "").localeCompare(String(b.handle || ""));
+      if (sortMode === "chat") return b.chatCount - a.chatCount || String(a.handle || "").localeCompare(String(b.handle || ""));
+      if (sortMode === "achievements") return b.achievementCount - a.achievementCount || String(a.handle || "").localeCompare(String(b.handle || ""));
+      return b.badgeCount - a.badgeCount || String(a.handle || "").localeCompare(String(b.handle || ""));
+    });
+
+  const badgeLeaders = [...profiles].sort((a, b) => b.badgeCount - a.badgeCount).slice(0, 5);
+  const activityLeaders = [...profiles].sort((a, b) => b.activityCount - a.activityCount).slice(0, 5);
+  const adminProfiles = profiles.filter((profile) => profile.role === "admin");
+  const priorityProfiles = profiles.filter((profile) => profile.role === "priority");
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+      <section className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-6 shadow-2xl shadow-black/20 md:p-8">
+        <Badge className="mb-4 rounded-xl bg-emerald-500/20 text-emerald-200">Community</Badge>
+        <h2 className="text-5xl font-black tracking-tight md:text-7xl">Users</h2>
+        <p className="mt-3 max-w-2xl text-slate-300">
+          Browse PeePooList profiles, handles, bios, badges, achievements, and community activity.
+        </p>
+      </section>
+
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label="Public profiles" value={profiles.length} tone="emerald" body="Profiles currently visible." />
+        <StatCard label="Admins" value={adminProfiles.length} tone="yellow" body="Users with admin access." />
+        <StatCard label="Priority users" value={priorityProfiles.length} tone="purple" body="Users with priority request status." />
+        <StatCard label="Badges awarded" value={(userBadges || []).length} tone="cyan" body="Custom admin-awarded badges." />
+      </section>
+
+      <section className="grid gap-6 lg:grid-cols-2">
+        <Card className="rounded-[2rem] border-white/10 bg-slate-950/80 text-slate-100 shadow-2xl shadow-black/30">
+          <CardContent className="p-6">
+            <h3 className="text-2xl font-black">Badge leaderboard</h3>
+            <p className="mt-1 text-sm text-slate-400">Users with the most custom badges.</p>
+            <div className="mt-4 space-y-3">
+              {badgeLeaders.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-white/15 p-6 text-center text-slate-500">No users yet.</div>
+              ) : (
+                badgeLeaders.map((profile, index) => (
+                  <button key={profile.user_id} onClick={() => setTab(userProfileTab(profile.handle || profile.user_id))} className="flex w-full items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-left transition hover:bg-white/[0.07]">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <ProfileAvatar profile={profile} className="h-11 w-11" />
+                      <div className="min-w-0">
+                        <p className="truncate font-black text-white">#{index + 1} {profile.display_name || profile.handle || "Unnamed user"}</p>
+                        <p className="truncate text-sm text-slate-500">{profile.handle ? `@${profile.handle}` : profile.user_id}</p>
+                      </div>
+                    </div>
+                    <Badge className="shrink-0 rounded-xl bg-purple-500/20 text-purple-200">{profile.badgeCount} badge{profile.badgeCount === 1 ? "" : "s"}</Badge>
+                  </button>
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-[2rem] border-white/10 bg-slate-950/80 text-slate-100 shadow-2xl shadow-black/30">
+          <CardContent className="p-6">
+            <h3 className="text-2xl font-black">Activity leaderboard</h3>
+            <p className="mt-1 text-sm text-slate-400">Visible chat messages plus level comments.</p>
+            <div className="mt-4 space-y-3">
+              {activityLeaders.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-white/15 p-6 text-center text-slate-500">No user activity yet.</div>
+              ) : (
+                activityLeaders.map((profile, index) => (
+                  <button key={profile.user_id} onClick={() => setTab(userProfileTab(profile.handle || profile.user_id))} className="flex w-full items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-left transition hover:bg-white/[0.07]">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <ProfileAvatar profile={profile} className="h-11 w-11" />
+                      <div className="min-w-0">
+                        <p className="truncate font-black text-white">#{index + 1} {profile.display_name || profile.handle || "Unnamed user"}</p>
+                        <p className="truncate text-sm text-slate-500">{profile.chatCount} chat · {profile.commentCount} comments</p>
+                      </div>
+                    </div>
+                    <Badge className="shrink-0 rounded-xl bg-cyan-500/20 text-cyan-200">{profile.activityCount} total</Badge>
+                  </button>
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      <Card className="rounded-[2rem] border-white/10 bg-slate-950/80 text-slate-100 shadow-2xl shadow-black/30">
+        <CardContent className="p-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <h3 className="text-2xl font-black">All users</h3>
+              <p className="mt-1 text-sm text-slate-400">Search profiles by name, handle, bio, or role.</p>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-[minmax(220px,1fr)_190px] lg:w-[560px]">
+              <Input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search users..."
+                className="rounded-2xl border-white/10 bg-white/10"
+              />
+              <select
+                value={sortMode}
+                onChange={(event) => setSortMode(event.target.value)}
+                className="w-full rounded-2xl border border-white/10 bg-white/10 px-3 py-2 text-sm font-bold text-white outline-none"
+              >
+                <option value="badges" className="bg-slate-900">Most badges</option>
+                <option value="achievements" className="bg-slate-900">Most achievements</option>
+                <option value="activity" className="bg-slate-900">Most activity</option>
+                <option value="comments" className="bg-slate-900">Most comments</option>
+                <option value="chat" className="bg-slate-900">Most chat</option>
+                <option value="name" className="bg-slate-900">Name A-Z</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
+            {filteredProfiles.length === 0 ? (
+              <div className="md:col-span-2 rounded-2xl border border-dashed border-white/15 p-8 text-center text-slate-500">
+                No users matched that search.
+              </div>
+            ) : (
+              filteredProfiles.map((profile) => (
+                <button
+                  key={profile.user_id}
+                  onClick={() => setTab(userProfileTab(profile.handle || profile.user_id))}
+                  className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-5 text-left transition hover:-translate-y-0.5 hover:bg-white/[0.07]"
+                >
+                  <div className="flex items-start gap-4">
+                    <ProfileAvatar profile={profile} className="h-14 w-14 rounded-3xl" textClassName="text-2xl" />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h4 className="truncate text-xl font-black text-white">{profile.display_name || profile.handle || "Unnamed user"}</h4>
+                        <Badge className={roleBadgeClass(profile.role)}>{roleName(profile.role)}</Badge>
+                      </div>
+                      <p className="truncate text-sm text-slate-500">{profile.handle ? `@${profile.handle}` : profile.user_id}</p>
+                      {profile.bio ? (
+                        <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-300">{profile.bio}</p>
+                      ) : (
+                        <p className="mt-3 text-sm text-slate-500">No bio yet.</p>
+                      )}
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <Badge className="rounded-xl bg-purple-500/20 text-purple-200">{profile.badgeCount} badge{profile.badgeCount === 1 ? "" : "s"}</Badge>
+                        <Badge className="rounded-xl bg-emerald-500/20 text-emerald-200">{profile.achievementCount} achievement{profile.achievementCount === 1 ? "" : "s"}</Badge>
+                        <Badge className="rounded-xl bg-cyan-500/20 text-cyan-200">{profile.activityCount} activity</Badge>
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
   );
 }
 
@@ -4614,6 +4809,17 @@ export default function PeePooListWebsite() {
     if (tab === "rules") return <RulesPage />;
     if (tab === "privacy") return <PrivacyPolicyPage />;
     if (tab === "contact") return <ContactPage />;
+    if (tab === "users") {
+      return (
+        <UsersPage
+          publicProfiles={publicProfiles}
+          userBadges={userBadges}
+          chatMessages={chatMessages}
+          levelComments={levelComments}
+          setTab={setTab}
+        />
+      );
+    }
     if (tab === "stats") {
       return (
         <StatsPage
