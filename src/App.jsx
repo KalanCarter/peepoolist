@@ -20,12 +20,6 @@ import {
   Pencil,
   ImagePlus,
   Save,
-  UserCircle,
-  Bell,
-  KeyRound,
-  UserCog,
-  ChevronDown,
-  ChevronUp,
 } from "lucide-react";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -48,7 +42,7 @@ function Button({ className = "", variant = "default", type = "button", ...props
     <button
       type={type}
       className={cn(
-        "inline-flex items-center justify-center rounded-xl px-3 py-2 text-xs font-semibold transition disabled:pointer-events-none disabled:opacity-50 sm:px-4 sm:text-sm",
+        "inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold transition disabled:pointer-events-none disabled:opacity-50",
         variants[variant] || variants.default,
         className
       )}
@@ -251,582 +245,7 @@ const dragSwing = [
   -11.9, -11.5, -10.7, -9.7, -8.5, -7.1, -5.5, -3.7, -1.9, 0,
 ];
 
-
-function isValidEmailAddress(email) {
-  const value = String(email || "").trim();
-  const atCount = (value.match(/@/g) || []).length;
-  if (atCount !== 1) return false;
-
-  const [localPart, domain] = value.split("@");
-  if (!localPart || !domain || domain.includes("..") || !domain.includes(".")) return false;
-
-  const ending = domain.split(".").pop();
-  if (!ending || ending.length < 2) return false;
-
-  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i.test(value);
-}
-
-function roleFromRequestedStatus(status) {
-  if (status === "admin") return "admin";
-  if (status === "priority") return "priority";
-  return "user";
-}
-
-function readableStatus(status) {
-  if (status === "admin") return "Admin";
-  if (status === "priority") return "Priority";
-  return "Viewer";
-}
-
-function ChangeEmailPanel({ user, onCancel, onChangeEmail }) {
-  const [step, setStep] = useState(0);
-  const [newEmail, setNewEmail] = useState("");
-  const [confirmEmail, setConfirmEmail] = useState("");
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
-
-  const validEmail = isValidEmailAddress(newEmail);
-  const emailsMatch = newEmail.trim().toLowerCase() === confirmEmail.trim().toLowerCase();
-
-  function beginChange() {
-    setError("");
-    setStep(1);
-  }
-
-  function continueFromNewEmail() {
-    if (!validEmail) {
-      setError("Invalid email");
-      return;
-    }
-
-    setError("");
-    setStep(2);
-  }
-
-  function continueFromConfirmEmail() {
-    if (!emailsMatch) {
-      setError("Emails dont match");
-      return;
-    }
-
-    setError("");
-  }
-
-  async function confirmChange() {
-    if (!validEmail) {
-      setError("Invalid email");
-      setStep(1);
-      return;
-    }
-
-    if (!emailsMatch) {
-      setError("Emails dont match");
-      setStep(2);
-      return;
-    }
-
-    setIsSaving(true);
-    setError("");
-    const result = await onChangeEmail(newEmail.trim());
-    setIsSaving(false);
-
-    if (result?.error) {
-      setError(result.error);
-      return;
-    }
-
-    setSuccess(`Confirmation email sent to ${newEmail.trim()}.`);
-    setStep(3);
-    window.setTimeout(() => onCancel(), 5000);
-  }
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, x: 14, scale: 0.98 }}
-      animate={{ opacity: 1, x: 0, scale: 1 }}
-      exit={{ opacity: 0, x: 14, scale: 0.98 }}
-      className="fixed left-3 right-3 top-24 z-[60] max-h-[72vh] overflow-y-auto rounded-[1.5rem] border border-white/10 bg-slate-950/95 p-4 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl md:absolute md:left-auto md:right-[17rem] md:top-12 md:w-[330px] md:max-h-none md:overflow-visible md:rounded-[2rem] md:p-5"
-    >
-      <h3 className="text-lg font-black">Change Email</h3>
-      <p className="mt-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-sm text-slate-300">
-        Current Email: <span className="font-semibold text-white">{user?.email || "Not signed in"}</span>
-      </p>
-
-      {step >= 1 && (
-        <div className="mt-4">
-          <label className="mb-2 block text-sm font-bold text-slate-200">Type in new email</label>
-          {error === "Invalid email" && <p className="mb-2 text-xs font-bold text-red-300">Invalid email</p>}
-          <Input
-            type="email"
-            value={newEmail}
-            onChange={(event) => {
-              setNewEmail(event.target.value);
-              if (error) setError("");
-            }}
-            placeholder="new@email.com"
-            className="rounded-2xl border-white/10 bg-white/10"
-          />
-        </div>
-      )}
-
-      {step >= 2 && (
-        <div className="mt-4">
-          <label className="mb-2 block text-sm font-bold text-slate-200">Confirm email</label>
-          {error === "Emails dont match" && <p className="mb-2 text-xs font-bold text-red-300">Emails dont match</p>}
-          <Input
-            type="email"
-            value={confirmEmail}
-            onChange={(event) => {
-              setConfirmEmail(event.target.value);
-              if (error) setError("");
-            }}
-            placeholder="new@email.com"
-            className="rounded-2xl border-white/10 bg-white/10"
-          />
-        </div>
-      )}
-
-      {step === 3 && (
-        <div className="mt-4 rounded-2xl border border-emerald-400/30 bg-emerald-400/10 p-4">
-          <p className="text-sm font-bold text-emerald-200">{success}</p>
-          <p className="mt-2 text-xs text-emerald-100/80">
-            Supabase sends the secure confirmation email. Click the link in that email to finish the change.
-          </p>
-        </div>
-      )}
-
-      {error && !["Invalid email", "Emails dont match"].includes(error) && (
-        <p className="mt-3 text-xs font-bold text-red-300">{error}</p>
-      )}
-
-      <div className="mt-5 flex justify-between gap-3">
-        <Button variant="secondary" onClick={onCancel} className="rounded-2xl">
-          Cancel
-        </Button>
-
-        {step === 0 && (
-          <Button onClick={beginChange} className="rounded-2xl">
-            Change
-          </Button>
-        )}
-
-        {step === 1 && (
-          <Button onClick={continueFromNewEmail} className="rounded-2xl">
-            Continue
-          </Button>
-        )}
-
-        {step === 2 && emailsMatch && validEmail ? (
-          <Button onClick={confirmChange} disabled={isSaving} className="rounded-2xl">
-            {isSaving ? "Sending..." : "Confirm"}
-          </Button>
-        ) : step === 2 ? (
-          <Button onClick={continueFromConfirmEmail} className="rounded-2xl">
-            Continue
-          </Button>
-        ) : null}
-      </div>
-    </motion.div>
-  );
-}
-
-function ChangePasswordPanel({ onCancel, onChangePassword }) {
-  const [step, setStep] = useState(1);
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
-
-  function continueToConfirm() {
-    if (newPassword.length < 6) {
-      setError("Password must be at least 6 characters");
-      return;
-    }
-
-    setError("");
-    setStep(2);
-  }
-
-  async function confirmChange() {
-    if (newPassword !== confirmPassword) {
-      setError("Passwords dont match");
-      return;
-    }
-
-    setIsSaving(true);
-    setError("");
-    const result = await onChangePassword(newPassword);
-    setIsSaving(false);
-
-    if (result?.error) {
-      setError(result.error);
-      return;
-    }
-
-    setSuccess("Password changed.");
-    window.setTimeout(() => onCancel(), 5000);
-  }
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, x: 14, scale: 0.98 }}
-      animate={{ opacity: 1, x: 0, scale: 1 }}
-      exit={{ opacity: 0, x: 14, scale: 0.98 }}
-      className="fixed left-3 right-3 top-24 z-[60] max-h-[72vh] overflow-y-auto rounded-[1.5rem] border border-white/10 bg-slate-950/95 p-4 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl md:absolute md:left-auto md:right-[17rem] md:top-12 md:w-[330px] md:max-h-none md:overflow-visible md:rounded-[2rem] md:p-5"
-    >
-      <h3 className="text-lg font-black">Change Password</h3>
-
-      <div className="mt-4">
-        <label className="mb-2 block text-sm font-bold text-slate-200">Type in new password</label>
-        <Input
-          type="password"
-          value={newPassword}
-          onChange={(event) => {
-            setNewPassword(event.target.value);
-            if (error) setError("");
-          }}
-          placeholder="New password"
-          className="rounded-2xl border-white/10 bg-white/10"
-        />
-      </div>
-
-      {step >= 2 && (
-        <div className="mt-4">
-          <label className="mb-2 block text-sm font-bold text-slate-200">Confirm password</label>
-          {error === "Passwords dont match" && <p className="mb-2 text-xs font-bold text-red-300">Passwords dont match</p>}
-          <Input
-            type="password"
-            value={confirmPassword}
-            onChange={(event) => {
-              setConfirmPassword(event.target.value);
-              if (error) setError("");
-            }}
-            placeholder="Confirm password"
-            className="rounded-2xl border-white/10 bg-white/10"
-          />
-        </div>
-      )}
-
-      {error && error !== "Passwords dont match" && <p className="mt-3 text-xs font-bold text-red-300">{error}</p>}
-      {success && <p className="mt-3 text-xs font-bold text-emerald-300">{success}</p>}
-
-      <div className="mt-5 flex justify-between gap-3">
-        <Button variant="secondary" onClick={onCancel} className="rounded-2xl">
-          Cancel
-        </Button>
-        {step === 1 ? (
-          <Button onClick={continueToConfirm} className="rounded-2xl">
-            Continue
-          </Button>
-        ) : (
-          <Button onClick={confirmChange} disabled={isSaving || !confirmPassword} className="rounded-2xl">
-            {isSaving ? "Saving..." : "Confirm"}
-          </Button>
-        )}
-      </div>
-    </motion.div>
-  );
-}
-
-function StatusRequestPanel({ onCancel, onSubmitStatusRequest }) {
-  const [requestedStatus, setRequestedStatus] = useState("admin");
-  const [reason, setReason] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
-  const [message, setMessage] = useState("");
-
-  async function submit() {
-    setIsSaving(true);
-    const result = await onSubmitStatusRequest({
-      requested_status: requestedStatus,
-      reason: reason.trim(),
-    });
-    setIsSaving(false);
-
-    if (result?.error) {
-      setMessage(result.error);
-      return;
-    }
-
-    setMessage("Status request sent.");
-    window.setTimeout(() => onCancel(), 1200);
-  }
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, x: 14, scale: 0.98 }}
-      animate={{ opacity: 1, x: 0, scale: 1 }}
-      exit={{ opacity: 0, x: 14, scale: 0.98 }}
-      className="fixed left-3 right-3 top-24 z-[60] max-h-[72vh] overflow-y-auto rounded-[1.5rem] border border-white/10 bg-slate-950/95 p-4 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl md:absolute md:left-auto md:right-[17rem] md:top-12 md:w-[360px] md:max-h-none md:overflow-visible md:rounded-[2rem] md:p-5"
-    >
-      <div className="flex items-center gap-3">
-        <label className="text-sm font-black text-slate-200">Request:</label>
-        <select
-          value={requestedStatus}
-          onChange={(event) => setRequestedStatus(event.target.value)}
-          className="flex-1 rounded-2xl border border-white/10 bg-white/10 px-3 py-2 text-sm text-white outline-none"
-        >
-          <option value="viewer" className="bg-slate-900">Viewer</option>
-          <option value="priority" className="bg-slate-900">Priority</option>
-          <option value="admin" className="bg-slate-900">Admin</option>
-        </select>
-      </div>
-
-      <div className="mt-4">
-        <label className="mb-2 block text-sm font-bold text-slate-200">Reasoning (optional)</label>
-        <Textarea
-          value={reason}
-          maxLength={1000}
-          onChange={(event) => setReason(event.target.value)}
-          placeholder="Explain why you should get this status..."
-          className="min-h-28 resize-y rounded-2xl border-white/10 bg-white/10 pr-4"
-        />
-        <p className="mt-1 text-xs text-slate-500">{reason.length}/1000</p>
-      </div>
-
-      {message && <p className={cn("mt-3 text-xs font-bold", message.includes("sent") ? "text-emerald-300" : "text-red-300")}>{message}</p>}
-
-      <div className="mt-5 flex justify-between gap-3">
-        <Button variant="secondary" onClick={onCancel} className="rounded-2xl">
-          Cancel
-        </Button>
-        <Button onClick={submit} disabled={isSaving} className="rounded-2xl">
-          {isSaving ? "Sending..." : "Confirm"}
-        </Button>
-      </div>
-    </motion.div>
-  );
-}
-
-function ProfileMenu({ user, isAdmin, profile, onSignOut, onChangeEmail, onChangePassword, onSubmitStatusRequest }) {
-  const [open, setOpen] = useState(false);
-  const [activePanel, setActivePanel] = useState("");
-
-  function closeSidePanel() {
-    setActivePanel("");
-  }
-
-  return (
-    <div className="relative">
-      <Button
-        onClick={() => {
-          setOpen((value) => !value);
-          setActivePanel("");
-        }}
-        variant="secondary"
-        className="shrink-0 rounded-2xl"
-      >
-        <UserCircle className="mr-2 h-4 w-4" />
-        Profile
-      </Button>
-
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, y: -8, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.98 }}
-            className="fixed left-3 right-3 top-24 z-50 max-h-[72vh] overflow-y-auto rounded-[1.5rem] border border-white/10 bg-slate-950/95 p-4 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl md:absolute md:left-auto md:right-0 md:top-12 md:w-64 md:max-h-none md:overflow-visible md:rounded-[2rem]"
-          >
-            {user ? (
-              <>
-                <div className="mb-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
-                  <p className="break-all text-sm font-bold text-white">{user.email}</p>
-                  <p className="mt-1 text-xs text-slate-400">Status: {isAdmin ? "Admin" : profile?.role === "priority" ? "Priority" : "Viewer"}</p>
-                </div>
-                <div className="grid gap-2">
-                  <Button variant="secondary" onClick={() => setActivePanel("email")} className="justify-start rounded-2xl">
-                    <Mail className="mr-2 h-4 w-4" /> Change Email
-                  </Button>
-                  <Button variant="secondary" onClick={() => setActivePanel("password")} className="justify-start rounded-2xl">
-                    <KeyRound className="mr-2 h-4 w-4" /> Change Password
-                  </Button>
-                  <Button variant="secondary" onClick={() => setActivePanel("status")} className="justify-start rounded-2xl">
-                    <UserCog className="mr-2 h-4 w-4" /> Request Admin
-                  </Button>
-                  <Button onClick={onSignOut} variant="secondary" className="mt-2 justify-start rounded-2xl">
-                    <LogOut className="mr-2 h-4 w-4" /> Sign out
-                  </Button>
-                </div>
-              </>
-            ) : (
-              <div className="rounded-2xl border border-amber-300/30 bg-amber-300/10 p-4 text-sm text-amber-100">
-                Sign in on the Home page to use profile settings.
-              </div>
-            )}
-          </motion.div>
-        )}
-
-        {open && activePanel === "email" && user && (
-          <ChangeEmailPanel user={user} onCancel={closeSidePanel} onChangeEmail={onChangeEmail} />
-        )}
-
-        {open && activePanel === "password" && user && (
-          <ChangePasswordPanel onCancel={closeSidePanel} onChangePassword={onChangePassword} />
-        )}
-
-        {open && activePanel === "status" && user && (
-          <StatusRequestPanel onCancel={closeSidePanel} onSubmitStatusRequest={onSubmitStatusRequest} />
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-function NotificationsMenu({ user, isAdmin, requests, statusRequests, notifications, onMarkNotificationsRead }) {
-  const [open, setOpen] = useState(false);
-
-  const adminItems = [
-    ...(requests || []).map((request) => ({
-      id: `level-${request.id}`,
-      title: "New level request",
-      message: `${request.requester_email || "Someone"} requested ${request.action} on ${request.list_type}: ${request.name || "Unnamed level"}.`,
-    })),
-    ...(statusRequests || []).map((request) => ({
-      id: `status-${request.id}`,
-      title: "New status request",
-      message: `${request.requester_email || "Someone"} requested ${readableStatus(request.requested_status)} status.`,
-    })),
-  ];
-
-  const userItems = notifications || [];
-  const unreadCount = isAdmin ? adminItems.length : userItems.filter((item) => !item.is_read).length;
-  const displayCount = unreadCount > 9 ? "9+" : String(unreadCount);
-
-  return (
-    <div className="relative">
-      <Button onClick={() => setOpen((value) => !value)} variant="secondary" className="relative shrink-0 rounded-2xl">
-        <Bell className="h-4 w-4" />
-        {unreadCount > 0 && (
-          <span className="absolute -bottom-1 -right-1 grid h-5 min-w-5 place-items-center rounded-full bg-red-600 px-1 text-[10px] font-black text-white">
-            {displayCount}
-          </span>
-        )}
-      </Button>
-
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, y: -8, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.98 }}
-            className="fixed left-3 right-3 top-24 z-50 max-h-[72vh] overflow-y-auto rounded-[1.5rem] border border-white/10 bg-slate-950/95 p-4 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl md:absolute md:left-auto md:right-0 md:top-12 md:w-80 md:max-h-none md:overflow-visible md:rounded-[2rem]"
-          >
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <h3 className="text-lg font-black">Notifications</h3>
-              {!isAdmin && userItems.some((item) => !item.is_read) && (
-                <button onClick={onMarkNotificationsRead} className="text-xs font-bold text-yellow-200 hover:text-yellow-100">
-                  Mark read
-                </button>
-              )}
-            </div>
-
-            {!user ? (
-              <p className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm text-slate-400">Sign in to view notifications.</p>
-            ) : isAdmin ? (
-              adminItems.length === 0 ? (
-                <p className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm text-slate-400">No new admin requests.</p>
-              ) : (
-                <div className="max-h-80 space-y-2 overflow-y-auto pr-1">
-                  {adminItems.map((item) => (
-                    <div key={item.id} className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
-                      <p className="text-sm font-black text-white">{item.title}</p>
-                      <p className="mt-1 text-xs text-slate-300">{item.message}</p>
-                    </div>
-                  ))}
-                </div>
-              )
-            ) : userItems.length === 0 ? (
-              <p className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm text-slate-400">No notifications yet.</p>
-            ) : (
-              <div className="max-h-80 space-y-2 overflow-y-auto pr-1">
-                {userItems.map((item) => (
-                  <div key={item.id} className={cn("rounded-2xl border p-3", item.is_read ? "border-white/10 bg-white/[0.03]" : "border-yellow-300/30 bg-yellow-300/10")}>
-                    <p className="text-sm font-black text-white">{item.title}</p>
-                    <p className="mt-1 text-xs text-slate-300">{item.message}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-function StatusRequestsPanel({ statusRequests, onApprove, onDeny }) {
-  const [open, setOpen] = useState(false);
-  const [expandedId, setExpandedId] = useState("");
-
-  return (
-    <section className="rounded-[1.5rem] border border-white/10 bg-slate-950/60 p-4 text-slate-300 md:rounded-[2rem] md:p-6">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h3 className="text-xl font-black text-white">Admin status requests</h3>
-          <p className="mt-1 text-sm text-slate-400">Review requests for Viewer, Priority, and Admin access.</p>
-        </div>
-        <Button onClick={() => setOpen((value) => !value)} variant="secondary" className="rounded-2xl">
-          <Inbox className="mr-2 h-4 w-4" /> View status change requests ({statusRequests.length})
-        </Button>
-      </div>
-
-      <AnimatePresence>
-        {open && (
-          <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="mt-5 space-y-3">
-            {statusRequests.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-white/15 p-8 text-center text-slate-400">No pending status change requests.</div>
-            ) : (
-              statusRequests.map((request) => {
-                const isExpanded = expandedId === request.id;
-
-                return (
-                  <div key={request.id} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-                    <button
-                      onClick={() => setExpandedId(isExpanded ? "" : request.id)}
-                      className="flex w-full items-center gap-3 text-left"
-                    >
-                      <span className="max-w-[55%] truncate rounded-xl bg-emerald-500/20 px-2.5 py-1 text-xs font-bold text-emerald-200">
-                        {request.requester_email || "Unknown email"}
-                      </span>
-                      <span className="rounded-xl bg-blue-500/20 px-2.5 py-1 text-xs font-bold text-blue-200">
-                        {readableStatus(request.requested_status)}
-                      </span>
-                      <span className="ml-auto rounded-xl bg-white/10 p-2 text-slate-200">
-                        {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                      </span>
-                    </button>
-
-                    <AnimatePresence>
-                      {isExpanded && (
-                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                          <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
-                            <p className="text-sm text-slate-300">{request.reason || "No reasoning provided."}</p>
-                            <div className="mt-4 flex justify-between gap-3">
-                              <Button onClick={() => onDeny(request)} variant="destructive" className="rounded-2xl">
-                                Decline
-                              </Button>
-                              <Button onClick={() => onApprove(request)} className="rounded-2xl bg-emerald-600 hover:bg-emerald-500">
-                                Accept
-                              </Button>
-                            </div>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                );
-              })
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </section>
-  );
-}
-
-function SiteShell({ children, tab, setTab, isAdmin, user, profile, signOut, changeEmail, changePassword, submitStatusRequest, requests, statusRequests, notifications, markNotificationsRead }) {
+function SiteShell({ children, tab, setTab, isAdmin, user }) {
   return (
     <div className="min-h-screen bg-[#090d18] text-slate-100 selection:bg-yellow-300 selection:text-black">
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
@@ -835,57 +254,44 @@ function SiteShell({ children, tab, setTab, isAdmin, user, profile, signOut, cha
       </div>
 
       <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0c1220]/80 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-3 py-3 md:flex-row md:items-center md:justify-between md:px-4 md:py-4">
+        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-4 md:flex-row md:items-center md:justify-between">
           <button onClick={() => setTab("home")} className="group flex items-center gap-3 text-left">
-            <div className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br from-yellow-300 to-amber-700 text-xl shadow-lg shadow-yellow-900/30 transition group-hover:scale-105 md:h-12 md:w-12 md:text-2xl">
-              💩
+            <div className="grid h-12 w-12 place-items-center overflow-hidden rounded-2xl bg-[#007a55] shadow-lg shadow-emerald-900/30 transition group-hover:scale-105">
+              <img src="/logo.png" alt="PeePooList logo" className="h-full w-full object-cover" />
             </div>
             <div>
-              <h1 className="text-xl font-black tracking-tight md:text-3xl">PeePooList</h1>
-              <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400 md:text-xs md:tracking-[0.28em]">peepoolist.com</p>
+              <h1 className="text-2xl font-black tracking-tight md:text-3xl">PeePooList</h1>
+              <p className="text-xs uppercase tracking-[0.28em] text-slate-400">peepoolist.com</p>
             </div>
           </button>
 
-          <nav className="flex w-full items-center gap-2 overflow-x-auto pb-1 md:w-auto md:flex-wrap md:overflow-visible md:pb-0">
-            <Button variant={tab === "home" ? "default" : "secondary"} onClick={() => setTab("home")} className="shrink-0 rounded-2xl">
+          <nav className="flex flex-wrap items-center gap-2">
+            <Button variant={tab === "home" ? "default" : "secondary"} onClick={() => setTab("home")} className="rounded-2xl">
               <Home className="mr-2 h-4 w-4" /> Home
             </Button>
-            <Button variant={tab === "pooplist" ? "default" : "secondary"} onClick={() => setTab("pooplist")} className="shrink-0 rounded-2xl">
+            <Button variant={tab === "pooplist" ? "default" : "secondary"} onClick={() => setTab("pooplist")} className="rounded-2xl">
               The Pooplist
             </Button>
-            <Button variant={tab === "peelist" ? "default" : "secondary"} onClick={() => setTab("peelist")} className="shrink-0 rounded-2xl">
+            <Button variant={tab === "peelist" ? "default" : "secondary"} onClick={() => setTab("peelist")} className="rounded-2xl">
               The Peelist
             </Button>
-            <NotificationsMenu
-              user={user}
-              isAdmin={isAdmin}
-              requests={requests}
-              statusRequests={statusRequests}
-              notifications={notifications}
-              onMarkNotificationsRead={markNotificationsRead}
-            />
-            <ProfileMenu
-              user={user}
-              isAdmin={isAdmin}
-              profile={profile}
-              onSignOut={signOut}
-              onChangeEmail={changeEmail}
-              onChangePassword={changePassword}
-              onSubmitStatusRequest={submitStatusRequest}
-            />
+            <Badge className={isAdmin ? "rounded-xl bg-emerald-500/20 text-emerald-200" : "rounded-xl bg-slate-700 text-slate-200"}>
+              {isAdmin ? <ShieldCheck className="mr-1 h-3 w-3" /> : <Lock className="mr-1 h-3 w-3" />}
+              {isAdmin ? "Admin verified" : user ? "Signed in" : "Viewer mode"}
+            </Badge>
           </nav>
         </div>
       </header>
 
-      <main className="relative mx-auto max-w-6xl px-3 py-5 md:px-4 md:py-8">{children}</main>
+      <main className="relative mx-auto max-w-6xl px-4 py-8">{children}</main>
     </div>
   );
 }
 
 function AuthBox({ user, isAdmin, signIn, signUp, signInWithGoogle, signInWithGithub, signOut, authEmail, setAuthEmail, authPassword, setAuthPassword, authMessage, isConfigured }) {
   return (
-    <Card className="rounded-[1.5rem] border-white/10 bg-slate-950/70 text-slate-100 shadow-2xl shadow-black/30 md:rounded-[2rem]">
-      <CardContent className="space-y-4 p-4 md:p-6">
+    <Card className="rounded-[2rem] border-white/10 bg-slate-950/70 text-slate-100 shadow-2xl shadow-black/30">
+      <CardContent className="space-y-4 p-6">
         <div className="flex items-center gap-3">
           <div className="grid h-11 w-11 place-items-center rounded-2xl bg-white/10">
             {isAdmin ? <ShieldCheck className="h-5 w-5 text-emerald-300" /> : <Mail className="h-5 w-5 text-yellow-200" />}
@@ -957,15 +363,15 @@ function AuthBox({ user, isAdmin, signIn, signUp, signInWithGoogle, signInWithGi
   );
 }
 
-function HomePage({ user, isAdmin, signIn, signUp, signInWithGoogle, signInWithGithub, signOut, authEmail, setAuthEmail, authPassword, setAuthPassword, authMessage, requestCount, statusRequests, approveStatusRequest, denyStatusRequest, isConfigured }) {
+function HomePage({ user, isAdmin, signIn, signUp, signInWithGoogle, signInWithGithub, signOut, authEmail, setAuthEmail, authPassword, setAuthPassword, authMessage, requestCount, isConfigured }) {
   return (
     <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
       <section className="grid gap-6 md:grid-cols-[1.2fr_.8fr]">
-        <Card className="overflow-hidden rounded-[1.5rem] border-white/10 bg-white/[0.04] text-slate-100 shadow-2xl shadow-black/30 md:rounded-[2rem]">
-          <CardContent className="p-5 md:p-10">
+        <Card className="overflow-hidden rounded-[2rem] border-white/10 bg-white/[0.04] text-slate-100 shadow-2xl shadow-black/30">
+          <CardContent className="p-7 md:p-10">
             <Badge className="mb-5 rounded-xl bg-yellow-300 text-black">Geometry Dash challenge rankings</Badge>
-            <h2 className="text-3xl font-black leading-tight tracking-tight md:text-6xl">A Geometry Dash level list for PeePooList rankings.</h2>
-            <p className="mt-4 max-w-2xl text-base text-slate-300 md:mt-5 md:text-lg">
+            <h2 className="text-4xl font-black leading-tight tracking-tight md:text-6xl">A Geometry Dash level list for PeePooList rankings.</h2>
+            <p className="mt-5 max-w-2xl text-lg text-slate-300">
               PeePooList ranks Geometry Dash levels in two categories: possible levels on <b>The Pooplist</b> and impossible levels on <b>The Peelist</b>. Browse the ranked lists, submit level change requests, and follow the current placements.
             </p>
           </CardContent>
@@ -988,14 +394,14 @@ function HomePage({ user, isAdmin, signIn, signUp, signInWithGoogle, signInWithG
         />
       </section>
 
-      <section className="grid gap-3 md:grid-cols-3 md:gap-4">
+      <section className="grid gap-4 md:grid-cols-3">
         {[
           ["💩", "Pooplist", "Ranked levels that are considered possible."],
           ["💧", "Peelist", "Ranked levels that are considered impossible."],
           ["🧻", "Requests", "Signed-in users can suggest additions, removals, or edits for admin review."],
         ].map(([emoji, title, body]) => (
-          <Card key={title} className="rounded-[1.35rem] border-white/10 bg-white/[0.04] text-slate-100 md:rounded-[1.7rem]">
-            <CardContent className="p-4 md:p-6">
+          <Card key={title} className="rounded-[1.7rem] border-white/10 bg-white/[0.04] text-slate-100">
+            <CardContent className="p-6">
               <div className="mb-4 text-4xl">{emoji}</div>
               <h3 className="text-2xl font-black">{title}</h3>
               <p className="mt-2 text-slate-400">{body}</p>
@@ -1004,7 +410,7 @@ function HomePage({ user, isAdmin, signIn, signUp, signInWithGoogle, signInWithG
         ))}
       </section>
 
-      <section className="rounded-[1.5rem] border border-white/10 bg-slate-950/60 p-4 text-slate-300 md:rounded-[2rem] md:p-6">
+      <section className="rounded-[2rem] border border-white/10 bg-slate-950/60 p-6 text-slate-300">
         <h3 className="text-xl font-black text-white">Security model</h3>
         <p className="mt-2 text-sm leading-6">
           Level editing is protected by Supabase Auth and database Row Level Security. The frontend only shows buttons for admins, but the database still rejects unauthorized inserts, edits, approvals, and deletions.
@@ -1012,15 +418,7 @@ function HomePage({ user, isAdmin, signIn, signUp, signInWithGoogle, signInWithG
         <p className="mt-3 text-sm text-slate-400">Pending requests: <span className="font-bold text-white">{requestCount}</span></p>
       </section>
 
-      {isAdmin && (
-        <StatusRequestsPanel
-          statusRequests={statusRequests}
-          onApprove={approveStatusRequest}
-          onDeny={denyStatusRequest}
-        />
-      )}
-
-      <footer className="rounded-[1.5rem] border border-yellow-300/30 bg-yellow-300/10 p-4 text-yellow-100 md:rounded-[2rem] md:p-6">
+      <footer className="rounded-[2rem] border border-yellow-300/30 bg-yellow-300/10 p-6 text-yellow-100">
         <h3 className="text-xl font-black">Disclaimer</h3>
         <p className="mt-2 text-sm leading-6">
           This website is a joke. The PeePooList, The Pooplist, and The Peelist are parody rankings and should not be taken seriously, used for drama, or treated as an actual official Geometry Dash Demonlist. Please laugh responsibly.
@@ -1066,7 +464,7 @@ function LevelCard({ level, index, listType, removeMode, onRemove, reorderMode, 
         if (removeMode || reorderMode || isDragging || !level.level_url) return;
         openLevelUrl(level.level_url);
       }}
-      className={`group relative mx-auto flex min-h-0 w-full max-w-[800px] flex-col overflow-hidden rounded-[1.5rem] border border-white/10 bg-gradient-to-br ${colors} shadow-2xl shadow-black/25 md:min-h-[300px] md:flex-row md:rounded-[2rem] ${draggable ? "cursor-grab active:cursor-grabbing" : level.level_url ? "cursor-pointer" : ""} ${isDragging ? "z-30 ring-2 ring-yellow-300/70" : ""}`}
+      className={`group relative mx-auto flex min-h-[300px] w-full max-w-[800px] flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-gradient-to-br ${colors} shadow-2xl shadow-black/25 md:min-h-[300px] md:flex-row ${draggable ? "cursor-grab active:cursor-grabbing" : level.level_url ? "cursor-pointer" : ""} ${isDragging ? "z-30 ring-2 ring-yellow-300/70" : ""}`}
     >
       {reorderMode && (
         <div className="absolute right-4 top-4 z-10 flex items-center gap-2 rounded-2xl bg-black/55 px-3 py-2 text-xs font-bold text-yellow-100 backdrop-blur">
@@ -1085,19 +483,19 @@ function LevelCard({ level, index, listType, removeMode, onRemove, reorderMode, 
         </button>
       )}
 
-      <div className="flex w-full flex-row items-center justify-between gap-3 p-4 md:w-[230px] md:flex-col md:items-start md:justify-center md:p-7">
+      <div className="flex w-full flex-col justify-center gap-3 p-5 md:w-[230px] md:p-7">
         <div className="flex items-center gap-2 text-sm uppercase tracking-[0.28em] text-slate-400">
           <Crown className="h-4 w-4 text-yellow-300" /> Top
         </div>
-        <div className="text-5xl font-black leading-none text-white drop-shadow-lg md:text-7xl">#{index + 1}</div>
+        <div className="text-7xl font-black leading-none text-white drop-shadow-lg">#{index + 1}</div>
       </div>
 
-      <div className="relative h-36 overflow-hidden border-y border-white/10 sm:h-44 md:min-h-[300px] md:w-[260px] md:self-stretch md:border-x md:border-y-0">
+      <div className="relative h-48 overflow-hidden border-y border-white/10 md:min-h-[300px] md:w-[260px] md:self-stretch md:border-x md:border-y-0">
         <img src={imageFor(level, index, listType)} alt={`${level.name} thumbnail`} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
       </div>
 
-      <div className="flex flex-1 flex-col justify-center p-4 md:p-6">
+      <div className="flex flex-1 flex-col justify-center p-6">
         <h3
           className="font-black leading-tight break-words [overflow-wrap:anywhere]"
           style={{
@@ -1106,12 +504,12 @@ function LevelCard({ level, index, listType, removeMode, onRemove, reorderMode, 
         >
           {level.name}
         </h3>
-        <div className="mt-3 flex flex-wrap gap-2 text-xs sm:text-sm md:mt-4">
+        <div className="mt-4 flex flex-wrap gap-2 text-sm">
           <Badge className="rounded-xl bg-cyan-500/20 text-cyan-200">Creator: {level.creator || "Unknown"}</Badge>
           <Badge className="rounded-xl bg-emerald-500/20 text-emerald-200">Verifier: {level.verifier || "Unknown"}</Badge>
           {level.level_url && <Badge className="rounded-xl bg-blue-500/20 text-blue-200">Click to open</Badge>}
         </div>
-        <p className="mt-3 text-xs text-slate-400 md:mt-4 md:text-sm">
+        <p className="mt-4 text-sm text-slate-400">
           {listType === "pooplist" ? "Marked as possible and currently placed on the ranked list." : "Marked as impossible and currently placed on the ranked list."}
         </p>
       </div>
@@ -1143,20 +541,20 @@ function LevelEditCard({ level, index, listType, draggable, isDragging, onDragSt
         onDragOver={onDragOver}
         onDrop={onDrop}
         onDragEnd={onDragEnd}
-        className={`group relative flex min-h-0 w-full flex-col overflow-hidden rounded-[1.5rem] border border-white/10 bg-gradient-to-br ${colors} shadow-2xl shadow-black/25 md:min-h-[300px] md:flex-row md:rounded-[2rem] ${draggable ? "cursor-grab active:cursor-grabbing" : ""} ${isDragging ? "z-30 ring-2 ring-yellow-300/70" : ""}`}
+        className={`group relative flex min-h-[300px] w-full flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-gradient-to-br ${colors} shadow-2xl shadow-black/25 md:min-h-[300px] md:flex-row ${draggable ? "cursor-grab active:cursor-grabbing" : ""} ${isDragging ? "z-30 ring-2 ring-yellow-300/70" : ""}`}
       >
         <div className="absolute right-4 top-4 z-10 flex items-center gap-2 rounded-2xl bg-black/55 px-3 py-2 text-xs font-bold text-yellow-100 backdrop-blur">
           <GripVertical className="h-4 w-4" /> Drag to reorder
         </div>
 
-        <div className="flex w-full flex-row items-center justify-between gap-3 p-4 md:w-[190px] md:flex-col md:items-start md:justify-center md:p-7">
+        <div className="flex w-full flex-col justify-center gap-3 p-5 md:w-[190px] md:p-7">
           <div className="flex items-center gap-2 text-sm uppercase tracking-[0.28em] text-slate-400">
             <Crown className="h-4 w-4 text-yellow-300" /> Top
           </div>
-          <div className="text-5xl font-black leading-none text-white drop-shadow-lg md:text-6xl">#{index + 1}</div>
+          <div className="text-6xl font-black leading-none text-white drop-shadow-lg">#{index + 1}</div>
         </div>
 
-        <label htmlFor={fileInputId} className="relative h-36 cursor-pointer overflow-hidden border-y border-white/10 sm:h-44 md:min-h-[300px] md:w-[240px] md:self-stretch md:border-x md:border-y-0">
+        <label htmlFor={fileInputId} className="relative h-48 cursor-pointer overflow-hidden border-y border-white/10 md:min-h-[300px] md:w-[240px] md:self-stretch md:border-x md:border-y-0">
           <img src={imageFor(level, index, listType)} alt={`${level.name} thumbnail`} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
           <div className="absolute inset-0 grid place-items-center bg-black/45 opacity-0 transition group-hover:opacity-100">
             <span className="inline-flex items-center rounded-2xl bg-white/15 px-4 py-2 text-sm font-bold text-white backdrop-blur">
@@ -1230,8 +628,8 @@ function AddRemoveRequestForm({ listType, onSubmit, onCancel, mode = "admin", us
   }
 
   return (
-    <Card className="rounded-[1.5rem] border-white/10 bg-slate-950/95 text-slate-100 shadow-2xl shadow-black/30 md:rounded-[2rem]">
-      <CardContent className="p-4 md:p-6">
+    <Card className="rounded-[2rem] border-white/10 bg-slate-950/95 text-slate-100 shadow-2xl shadow-black/30">
+      <CardContent className="p-6">
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
             <h3 className="text-2xl font-black">{mode === "admin" ? "Add a level" : "Submit a list request"}</h3>
@@ -1385,7 +783,7 @@ function EditLevelsPanel({ listType, levels, isAdmin, user, uploadThumbnail, onA
   }
 
   return (
-    <Card className="rounded-[1.5rem] border-white/10 bg-slate-950/95 text-slate-100 shadow-2xl shadow-black/30 md:rounded-[2rem]">
+    <Card className="rounded-[2rem] border-white/10 bg-slate-950/95 text-slate-100 shadow-2xl shadow-black/30">
       <CardContent className="space-y-6 p-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
@@ -1489,8 +887,8 @@ function EditLevelsPanel({ listType, levels, isAdmin, user, uploadThumbnail, onA
 
 function RequestsPanel({ requests, onApprove, onDeny }) {
   return (
-    <Card className="rounded-[1.5rem] border-white/10 bg-slate-950/95 text-slate-100 shadow-2xl shadow-black/30 md:rounded-[2rem]">
-      <CardContent className="p-4 md:p-6">
+    <Card className="rounded-[2rem] border-white/10 bg-slate-950/95 text-slate-100 shadow-2xl shadow-black/30">
+      <CardContent className="p-6">
         <div className="mb-5 flex items-center gap-3">
           <Inbox className="h-6 w-6 text-yellow-200" />
           <div>
@@ -1507,13 +905,11 @@ function RequestsPanel({ requests, onApprove, onDeny }) {
               <div key={request.id} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <div>
-                    <div className="flex w-full items-center gap-2 overflow-x-auto pb-1 md:w-auto md:flex-wrap md:overflow-visible md:pb-0">
+                    <div className="flex flex-wrap items-center gap-2">
                       <Badge className={request.action === "add" ? "rounded-xl bg-emerald-500/20 text-emerald-200" : request.action === "edit" ? "rounded-xl bg-blue-500/20 text-blue-200" : "rounded-xl bg-red-500/20 text-red-200"}>
                         {String(request.action).toUpperCase()}
                       </Badge>
                       <Badge className="rounded-xl bg-white/10 text-white">{request.list_type === "pooplist" ? "Pooplist" : "Peelist"}</Badge>
-                      {request.request_priority && <Badge className="rounded-xl bg-yellow-300/20 text-yellow-100">PRIORITY</Badge>}
-                      {request.requester_email && <Badge className="rounded-xl bg-emerald-500/20 text-emerald-200">{request.requester_email}</Badge>}
                     </div>
                     <h4 className="mt-2 text-xl font-black">{request.name || "Unnamed level"}</h4>
                     <p className="text-sm text-slate-400">Top #{request.rank} · Creator: {request.creator || "Unknown"} · Verifier: {request.verifier || "Unknown"}</p>
@@ -1522,7 +918,7 @@ function RequestsPanel({ requests, onApprove, onDeny }) {
                   </div>
                   <div className="flex gap-2">
                     <Button onClick={() => onApprove(request)} className="rounded-2xl bg-emerald-600 hover:bg-emerald-500"><Check className="mr-2 h-4 w-4" />Approve</Button>
-                    <Button onClick={() => onDeny(request)} variant="destructive" className="rounded-2xl"><X className="mr-2 h-4 w-4" />Deny</Button>
+                    <Button onClick={() => onDeny(request.id)} variant="destructive" className="rounded-2xl"><X className="mr-2 h-4 w-4" />Deny</Button>
                   </div>
                 </div>
               </div>
@@ -1563,17 +959,17 @@ function ListPage({ listType, levels, isAdmin, user, requests, addLevel, removeL
 
   return (
     <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-      <section className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4 shadow-2xl shadow-black/20 md:rounded-[2rem] md:p-8">
+      <section className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-6 shadow-2xl shadow-black/20 md:p-8">
         <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
           <div>
             <Badge className={listType === "pooplist" ? "mb-4 rounded-xl bg-amber-500/20 text-amber-200" : "mb-4 rounded-xl bg-yellow-300/20 text-yellow-100"}>
               {levels.length} ranked levels
             </Badge>
-            <h2 className="text-4xl font-black tracking-tight md:text-7xl">{title}</h2>
+            <h2 className="text-5xl font-black tracking-tight md:text-7xl">{title}</h2>
             <p className="mt-3 max-w-2xl text-slate-300">{subtitle}</p>
           </div>
 
-          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap">
+          <div className="flex flex-wrap gap-2">
             <Button onClick={() => setShowRequest((value) => !value)} variant="secondary" className="rounded-2xl">
               <Send className="mr-2 h-4 w-4" />Submit request
             </Button>
@@ -1658,11 +1054,8 @@ export default function PeePooListWebsite() {
   const [statusMessage, setStatusMessage] = useState("");
   const [levels, setLevels] = useState(SAMPLE_LEVELS);
   const [requests, setRequests] = useState([]);
-  const [statusRequests, setStatusRequests] = useState([]);
-  const [notifications, setNotifications] = useState([]);
 
   const isAdmin = profile?.role === "admin";
-  const isPriority = profile?.role === "priority";
 
   async function loadProfile(nextUser) {
     if (!supabase || !nextUser) {
@@ -1695,53 +1088,13 @@ export default function PeePooListWebsite() {
       setRequests([]);
       return;
     }
-
     const { data, error } = await supabase.from("requests").select("*").eq("status", "pending").order("created_at", { ascending: false });
 
     if (error) {
       setStatusMessage(`Could not load requests: ${error.message}`);
       return;
     }
-
-    const sortedRequests = [...(data || [])].sort((a, b) => {
-      const priorityDiff = Number(Boolean(b.request_priority)) - Number(Boolean(a.request_priority));
-      if (priorityDiff !== 0) return priorityDiff;
-      return new Date(b.created_at || 0) - new Date(a.created_at || 0);
-    });
-
-    setRequests(sortedRequests);
-  }
-
-  async function loadStatusRequests() {
-    if (!supabase || !isAdmin) {
-      setStatusRequests([]);
-      return;
-    }
-
-    const { data, error } = await supabase.from("status_requests").select("*").eq("status", "pending").order("created_at", { ascending: false });
-
-    if (error) {
-      setStatusMessage(`Could not load status requests: ${error.message}`);
-      return;
-    }
-
-    setStatusRequests(data || []);
-  }
-
-  async function loadNotifications(nextUser = user) {
-    if (!supabase || !nextUser) {
-      setNotifications([]);
-      return;
-    }
-
-    const { data, error } = await supabase.from("notifications").select("*").eq("user_id", nextUser.id).order("created_at", { ascending: false });
-
-    if (error) {
-      setNotifications([]);
-      return;
-    }
-
-    setNotifications(data || []);
+    setRequests(data || []);
   }
 
   useEffect(() => {
@@ -1771,14 +1124,12 @@ export default function PeePooListWebsite() {
       const nextUser = data.session?.user || null;
       setUser(nextUser);
       await loadProfile(nextUser);
-      await loadNotifications(nextUser);
     }
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       const nextUser = session?.user || null;
       setUser(nextUser);
       loadProfile(nextUser);
-      loadNotifications(nextUser);
     });
 
     startAuth();
@@ -1789,9 +1140,7 @@ export default function PeePooListWebsite() {
 
   useEffect(() => {
     loadRequests();
-    loadStatusRequests();
-    loadNotifications(user);
-  }, [isAdmin, user]);
+  }, [isAdmin]);
 
   async function signIn() {
     if (!supabase || !authEmail.trim() || !authPassword) return;
@@ -1857,142 +1206,7 @@ export default function PeePooListWebsite() {
     setUser(null);
     setProfile(null);
     setRequests([]);
-    setStatusRequests([]);
-    setNotifications([]);
     setAuthMessage("Signed out.");
-  }
-
-  async function changeEmail(newEmail) {
-    if (!supabase || !user) return { error: "Sign in before changing your email." };
-    if (!isValidEmailAddress(newEmail)) return { error: "Invalid email" };
-
-    const { error } = await supabase.auth.updateUser(
-      { email: newEmail.trim() },
-      { emailRedirectTo: window.location.origin }
-    );
-
-    if (error) {
-      setStatusMessage(`Could not change email: ${error.message}`);
-      return { error: error.message };
-    }
-
-    setStatusMessage("Email change confirmation sent.");
-    return { ok: true };
-  }
-
-  async function changePassword(newPassword) {
-    if (!supabase || !user) return { error: "Sign in before changing your password." };
-    if (String(newPassword || "").length < 6) return { error: "Password must be at least 6 characters" };
-
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
-
-    if (error) {
-      setStatusMessage(`Could not change password: ${error.message}`);
-      return { error: error.message };
-    }
-
-    setStatusMessage("Password changed.");
-    return { ok: true };
-  }
-
-  async function submitStatusRequest(form) {
-    if (!supabase || !user) return { error: "Sign in before requesting a status change." };
-
-    try {
-      const { error } = await supabase.from("status_requests").insert({
-        requested_status: form.requested_status,
-        reason: form.reason?.trim() || null,
-        requester_email: user.email || null,
-        status: "pending",
-        created_by: user.id,
-      });
-
-      if (error) throw error;
-
-      setStatusMessage("Status change request submitted.");
-      await loadStatusRequests();
-      return { ok: true };
-    } catch (error) {
-      setStatusMessage(`Could not submit status request: ${error.message}`);
-      return { error: error.message };
-    }
-  }
-
-  async function createNotification(userId, title, message) {
-    if (!supabase || !userId) return;
-
-    const { error } = await supabase.from("notifications").insert({
-      user_id: userId,
-      title,
-      message,
-      is_read: false,
-    });
-
-    if (error) {
-      console.error("Could not create notification:", error.message);
-    }
-  }
-
-  async function markNotificationsRead() {
-    if (!supabase || !user) return;
-
-    const { error } = await supabase
-      .from("notifications")
-      .update({ is_read: true })
-      .eq("user_id", user.id)
-      .eq("is_read", false);
-
-    if (!error) {
-      await loadNotifications(user);
-    }
-  }
-
-  async function approveStatusRequest(request) {
-    if (!supabase || !isAdmin) return;
-
-    try {
-      const role = roleFromRequestedStatus(request.requested_status);
-      const { error: profileError } = await supabase.from("profiles").upsert({
-        user_id: request.created_by,
-        role,
-      });
-
-      if (profileError) throw profileError;
-
-      const { error: requestError } = await supabase.from("status_requests").update({ status: "approved" }).eq("id", request.id);
-      if (requestError) throw requestError;
-
-      await createNotification(
-        request.created_by,
-        "Status request approved",
-        `Your request for ${readableStatus(request.requested_status)} status was approved.`
-      );
-
-      await loadStatusRequests();
-      setStatusMessage("Status request approved.");
-    } catch (error) {
-      setStatusMessage(`Could not approve status request: ${error.message}`);
-    }
-  }
-
-  async function denyStatusRequest(request) {
-    if (!supabase || !isAdmin) return;
-
-    try {
-      const { error } = await supabase.from("status_requests").update({ status: "denied" }).eq("id", request.id);
-      if (error) throw error;
-
-      await createNotification(
-        request.created_by,
-        "Status request declined",
-        `Your request for ${readableStatus(request.requested_status)} status was declined.`
-      );
-
-      await loadStatusRequests();
-      setStatusMessage("Status request declined.");
-    } catch (error) {
-      setStatusMessage(`Could not decline status request: ${error.message}`);
-    }
   }
 
   async function uploadThumbnail(file) {
@@ -2142,8 +1356,6 @@ export default function PeePooListWebsite() {
         thumbnail_url: form.thumbnail_url?.trim() || null,
         level_url: form.level_url?.trim() || null,
         reason: form.reason?.trim() || null,
-        requester_email: user.email || null,
-        request_priority: isPriority,
         status: "pending",
         created_by: user.id,
       });
@@ -2188,8 +1400,6 @@ export default function PeePooListWebsite() {
             thumbnail_url: level.thumbnail_url || null,
             level_url: level.level_url || null,
             reason: reason?.trim() || null,
-            requester_email: user.email || null,
-            request_priority: isPriority,
             status: "pending",
             created_by: user.id,
           });
@@ -2249,41 +1459,20 @@ export default function PeePooListWebsite() {
 
       const { error } = await supabase.from("requests").update({ status: "approved" }).eq("id", request.id);
       if (error) throw error;
-
-      await createNotification(
-        request.created_by,
-        "Level request approved",
-        `Your ${request.action} request for ${request.name || "a level"} on ${request.list_type === "pooplist" ? "The Pooplist" : "The Peelist"} was approved.`
-      );
-
       await loadRequests();
-      await loadNotifications(user);
       setStatusMessage("Request approved.");
     } catch (error) {
       setStatusMessage(`Could not approve request: ${error.message}`);
     }
   }
 
-  async function denyRequest(requestOrId) {
+  async function denyRequest(id) {
     if (!supabase || !isAdmin) return;
-
-    const request = typeof requestOrId === "string" ? requests.find((item) => item.id === requestOrId) : requestOrId;
-    const id = request?.id || requestOrId;
 
     try {
       const { error } = await supabase.from("requests").update({ status: "denied" }).eq("id", id);
       if (error) throw error;
-
-      if (request?.created_by) {
-        await createNotification(
-          request.created_by,
-          "Level request declined",
-          `Your ${request.action} request for ${request.name || "a level"} on ${request.list_type === "pooplist" ? "The Pooplist" : "The Peelist"} was declined.`
-        );
-      }
-
       await loadRequests();
-      await loadNotifications(user);
       setStatusMessage("Request denied.");
     } catch (error) {
       setStatusMessage(`Could not deny request: ${error.message}`);
@@ -2348,30 +1537,13 @@ export default function PeePooListWebsite() {
         setAuthPassword={setAuthPassword}
         authMessage={authMessage}
         requestCount={requests.length}
-        statusRequests={statusRequests}
-        approveStatusRequest={approveStatusRequest}
-        denyStatusRequest={denyStatusRequest}
         isConfigured={isSupabaseConfigured}
       />
     );
-  }, [tab, levels, isAdmin, user, profile, authEmail, authPassword, authMessage, requests, statusRequests, notifications, statusMessage]);
+  }, [tab, levels, isAdmin, user, authEmail, authPassword, authMessage, requests, statusMessage]);
 
   return (
-    <SiteShell
-      tab={tab}
-      setTab={setTab}
-      isAdmin={isAdmin}
-      user={user}
-      profile={profile}
-      signOut={signOut}
-      changeEmail={changeEmail}
-      changePassword={changePassword}
-      submitStatusRequest={submitStatusRequest}
-      requests={requests}
-      statusRequests={statusRequests}
-      notifications={notifications}
-      markNotificationsRead={markNotificationsRead}
-    >
+    <SiteShell tab={tab} setTab={setTab} isAdmin={isAdmin} user={user}>
       <AnimatePresence mode="wait">{visiblePage}</AnimatePresence>
     </SiteShell>
   );
