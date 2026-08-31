@@ -284,6 +284,24 @@ function SiteShell({ children, tab, setTab, isAdmin, user }) {
       </header>
 
       <main className="relative mx-auto max-w-6xl px-4 py-8">{children}</main>
+
+      <footer className="relative mx-auto max-w-6xl px-4 pb-8">
+        <div className="flex flex-wrap items-center justify-center gap-3 rounded-[2rem] border border-white/10 bg-slate-950/60 p-5 text-sm text-slate-400">
+          <button onClick={() => setTab("about")} className="font-semibold text-slate-200 hover:text-white">
+            About
+          </button>
+          <span className="text-slate-700">•</span>
+          <button onClick={() => setTab("privacy")} className="font-semibold text-slate-200 hover:text-white">
+            Privacy Policy
+          </button>
+          <span className="text-slate-700">•</span>
+          <button onClick={() => setTab("contact")} className="font-semibold text-slate-200 hover:text-white">
+            Contact
+          </button>
+          <span className="hidden text-slate-700 sm:inline">•</span>
+          <span className="w-full text-center sm:w-auto">PeePooList is a parody Geometry Dash ranking site.</span>
+        </div>
+      </footer>
     </div>
   );
 }
@@ -318,6 +336,9 @@ function AuthBox({ user, isAdmin, signIn, signUp, signInWithGoogle, signInWithGi
             </div>
             <Button onClick={signOut} variant="secondary" className="w-full rounded-2xl">
               <LogOut className="mr-2 h-4 w-4" /> Sign out
+            </Button>
+            <Button onClick={deleteAccount} variant="destructive" className="w-full rounded-2xl">
+              <Trash2 className="mr-2 h-4 w-4" /> Delete account
             </Button>
             <Button onClick={deleteAccount} variant="destructive" className="w-full rounded-2xl">
               <Trash2 className="mr-2 h-4 w-4" /> Delete account
@@ -429,6 +450,121 @@ function HomePage({ user, isAdmin, signIn, signUp, signInWithGoogle, signInWithG
         </p>
       </footer>
     </motion.div>
+  );
+}
+
+
+function InfoPageShell({ title, eyebrow, children }) {
+  return (
+    <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+      <section className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-6 shadow-2xl shadow-black/20 md:p-8">
+        <Badge className="mb-4 rounded-xl bg-emerald-500/20 text-emerald-200">{eyebrow}</Badge>
+        <h2 className="text-4xl font-black tracking-tight md:text-6xl">{title}</h2>
+      </section>
+
+      <Card className="rounded-[2rem] border-white/10 bg-slate-950/80 text-slate-100 shadow-2xl shadow-black/30">
+        <CardContent className="space-y-5 p-6 leading-7 text-slate-300 md:p-8">{children}</CardContent>
+      </Card>
+    </motion.div>
+  );
+}
+
+function AboutPage() {
+  return (
+    <InfoPageShell title="About PeePooList" eyebrow="About">
+      <p>
+        PeePooList is a parody Geometry Dash ranking website. It organizes levels into two joke categories:
+        <b className="text-white"> The Pooplist</b> for possible levels and <b className="text-white">The Peelist</b> for impossible levels.
+      </p>
+      <p>
+        The site lets visitors browse rankings and lets signed-in users submit level additions, removals, or edits for admin review.
+      </p>
+      <p>
+        PeePooList is not an official Geometry Dash Demonlist, RobTop Games website, or competitive authority. It is made for entertainment.
+      </p>
+    </InfoPageShell>
+  );
+}
+
+function PrivacyPolicyPage() {
+  return (
+    <InfoPageShell title="Privacy Policy" eyebrow="Privacy">
+      <p>
+        Last updated: August 30, 2026
+      </p>
+
+      <div>
+        <h3 className="text-xl font-black text-white">Information we collect</h3>
+        <p className="mt-2">
+          PeePooList uses Supabase for accounts, login, user roles, level requests, notifications, and uploaded thumbnails.
+          If you create an account, we may store your email address, user ID, profile role, submitted requests, uploaded images, and related timestamps.
+        </p>
+      </div>
+
+      <div>
+        <h3 className="text-xl font-black text-white">How we use information</h3>
+        <p className="mt-2">
+          We use account and request information to run the site, show the ranked lists, review submissions, prevent abuse, and keep admin features secure.
+        </p>
+      </div>
+
+      <div>
+        <h3 className="text-xl font-black text-white">Ads and cookies</h3>
+        <p className="mt-2">
+          PeePooList may use Google AdSense to show ads. Third parties, including Google, may place and read cookies on your browser,
+          or use web beacons, IP addresses, and similar technologies to collect information as a result of ad serving on this site.
+          Google may use this information to show personalized or non-personalized ads.
+        </p>
+        <p className="mt-2">
+          You can learn more about how Google uses information from sites that use its services at
+          <a className="break-words font-semibold text-emerald-200 hover:text-emerald-100" href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noreferrer"> Google’s partner sites page</a>,
+          and you can manage ad personalization at
+          <a className="break-words font-semibold text-emerald-200 hover:text-emerald-100" href="https://adssettings.google.com/" target="_blank" rel="noreferrer"> Google Ad Settings</a>.
+        </p>
+      </div>
+
+      <div>
+        <h3 className="text-xl font-black text-white">User-submitted content</h3>
+        <p className="mt-2">
+          Users may submit level names, creator names, verifier names, links, reasons, and thumbnails. Do not submit private information,
+          copyrighted images you do not have permission to use, malware links, or abusive content.
+        </p>
+      </div>
+
+      <div>
+        <h3 className="text-xl font-black text-white">Account deletion</h3>
+        <p className="mt-2">
+          Signed-in users can request account deletion from the account area. Deleting an account removes the login account, but some public list changes
+          or moderation records may remain if needed to keep the site working and prevent abuse.
+        </p>
+      </div>
+
+      <div>
+        <h3 className="text-xl font-black text-white">Contact</h3>
+        <p className="mt-2">
+          For privacy or site questions, contact the site owner at
+          <a className="ml-1 font-semibold text-emerald-200 hover:text-emerald-100" href="mailto:peepoolistvercelapp@gmail.com">peepoolistvercelapp@gmail.com</a>.
+        </p>
+      </div>
+    </InfoPageShell>
+  );
+}
+
+function ContactPage() {
+  return (
+    <InfoPageShell title="Contact" eyebrow="Contact">
+      <p>
+        For PeePooList questions, bug reports, privacy questions, or site issues, email:
+      </p>
+      <p>
+        <a className="break-words text-2xl font-black text-emerald-200 hover:text-emerald-100" href="mailto:peepoolistvercelapp@gmail.com">
+          peepoolistvercelapp@gmail.com
+        </a>
+      </p>
+      <p>
+        For level changes, signed-in users should use the request and edit buttons on The Pooplist or The Peelist pages.
+      </p>
+    </InfoPageShell>
   );
 }
 
@@ -1530,6 +1666,10 @@ export default function PeePooListWebsite() {
   }
 
   const visiblePage = useMemo(() => {
+    if (tab === "about") return <AboutPage />;
+    if (tab === "privacy") return <PrivacyPolicyPage />;
+    if (tab === "contact") return <ContactPage />;
+
     if (tab === "pooplist") {
       return (
         <ListPage
