@@ -26,12 +26,19 @@ import {
   UserCog,
   ChevronDown,
   ChevronUp,
+  Heart,
 } from "lucide-react";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 const supabase = isSupabaseConfigured ? createClient(supabaseUrl, supabaseAnonKey) : null;
+
+const SUPPORT_URL = "https://ko-fi.com/lowkal";
+
+function openSupportPage() {
+  window.open(SUPPORT_URL, "_blank", "noopener,noreferrer");
+}
 
 function cn(...classes) {
   return classes.filter(Boolean).join(" ");
@@ -931,6 +938,18 @@ function MoreMenu({ tab, setTab, user, isAdmin }) {
                 {item.label}
               </button>
             ))}
+
+            <div className="my-2 h-px bg-white/10" />
+
+            <button
+              onClick={() => {
+                setOpen(false);
+                openSupportPage();
+              }}
+              className="flex w-full items-center rounded-2xl bg-[#c0ffbf] px-4 py-3 text-left text-sm font-black text-slate-950 transition hover:bg-[#d3ffd2]"
+            >
+              <Heart className="mr-2 h-4 w-4 fill-current" /> Support PeePooList
+            </button>
           </motion.div>
         )}
       </AnimatePresence>
@@ -1290,6 +1309,10 @@ function SiteShell({ children, tab, setTab, isAdmin, user, profile, signOut, del
           <button onClick={() => setTab("stats")} className="font-semibold text-slate-200 hover:text-white">
             Stats
           </button>
+          <span className="text-slate-700">•</span>
+          <button onClick={openSupportPage} className="font-semibold text-[#c0ffbf] hover:text-[#d3ffd2]">
+            Support
+          </button>
           {isAdmin && (
             <>
               <span className="text-slate-700">•</span>
@@ -1465,6 +1488,27 @@ function HomePage({ user, isAdmin, signIn, signUp, signInWithGoogle, signInWithG
             <p className="mt-1 text-sm text-slate-400">{body}</p>
           </button>
         ))}
+      </section>
+
+      <section className="rounded-[2rem] border border-[#c0ffbf]/30 bg-[#c0ffbf]/10 p-6 text-slate-100 shadow-2xl shadow-black/20">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h3 className="text-2xl font-black text-white">Support PeePooList</h3>
+            <p className="mt-1 text-sm text-slate-300">
+              Tips help cover the domain, services, and random PeePooList nonsense.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={openSupportPage}
+            className="inline-flex items-center justify-center rounded-2xl border-2 border-black bg-[#c0ffbf] px-5 py-3 text-sm font-black text-white shadow-lg shadow-emerald-950/40 transition hover:brightness-110"
+            style={{
+              textShadow: "1px 1px 0 #000, -1px 1px 0 #000, 1px -1px 0 #000, -1px -1px 0 #000",
+            }}
+          >
+            <Heart className="mr-2 h-4 w-4 fill-current" /> Support on Ko-fi
+          </button>
+        </div>
       </section>
 
       <section className="grid gap-6 lg:grid-cols-3">
