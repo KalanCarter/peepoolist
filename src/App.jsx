@@ -907,6 +907,7 @@ function MoreMenu({ tab, setTab, user, isAdmin }) {
     { tab: "about", label: "About", show: true },
     { tab: "privacy", label: "Privacy Policy", show: true },
     { tab: "contact", label: "Contact", show: true },
+    { tab: "admin-messages", label: "Admin Messages", show: Boolean(isAdmin) },
     { tab: "admin", label: "Admin", show: Boolean(isAdmin) },
   ].filter((item) => item.show);
 
@@ -1068,7 +1069,7 @@ function ProfileMenu({ tab, user, isAdmin, profile, onSignOut, onDeleteAccount, 
   );
 }
 
-function NotificationsMenu({ tab, user, isAdmin, requests, statusRequests, reports, notifications, onMarkNotificationsRead }) {
+function NotificationsMenu({ tab, user, isAdmin, requests, statusRequests, reports, notifications, adminUnreadCount, onMarkNotificationsRead, onOpenAdminMessages }) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -1091,6 +1092,15 @@ function NotificationsMenu({ tab, user, isAdmin, requests, statusRequests, repor
       title: "New report",
       message: `${report.reporter_email || "Someone"} reported ${report.level_name || "a level"} for ${String(report.reason_type || "other").replaceAll("_", " ")}.`,
     })),
+    ...(adminUnreadCount > 0
+      ? [
+          {
+            id: "admin-messages-unread",
+            title: "Unread admin messages",
+            message: `${adminUnreadCount} unread admin message${adminUnreadCount === 1 ? "" : "s"}.`,
+          },
+        ]
+      : []),
   ];
 
   const userItems = notifications || [];
@@ -1129,9 +1139,17 @@ function NotificationsMenu({ tab, user, isAdmin, requests, statusRequests, repor
               <p className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm text-slate-400">Sign in to view notifications.</p>
             ) : isAdmin ? (
               adminItems.length === 0 ? (
-                <p className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm text-slate-400">No new admin requests.</p>
+                <div className="space-y-3">
+                  <p className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm text-slate-400">No new admin requests.</p>
+                  <Button onClick={onOpenAdminMessages} variant="secondary" className="w-full rounded-2xl">
+                    Open admin messages
+                  </Button>
+                </div>
               ) : (
                 <div className="max-h-80 space-y-2 overflow-y-auto pr-1">
+                  <Button onClick={onOpenAdminMessages} variant="secondary" className="mb-2 w-full rounded-2xl">
+                    Open admin messages
+                  </Button>
                   {adminItems.map((item) => (
                     <div key={item.id} className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
                       <p className="text-sm font-black text-white">{item.title}</p>
@@ -1229,7 +1247,7 @@ function StatusRequestsPanel({ statusRequests, onApprove, onDeny }) {
   );
 }
 
-function SiteShell({ children, tab, setTab, isAdmin, user, profile, signOut, deleteAccount, changeEmail, changePassword, submitStatusRequest, updateProfile, uploadAvatar, requests, statusRequests, reports, notifications, markNotificationsRead }) {
+function SiteShell({ children, tab, setTab, isAdmin, user, profile, signOut, deleteAccount, changeEmail, changePassword, submitStatusRequest, updateProfile, uploadAvatar, requests, statusRequests, reports, notifications, adminUnreadCount, markNotificationsRead }) {
   return (
     <div className="min-h-screen bg-[#090d18] text-slate-100 selection:bg-yellow-300 selection:text-black">
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
@@ -1271,7 +1289,9 @@ function SiteShell({ children, tab, setTab, isAdmin, user, profile, signOut, del
               statusRequests={statusRequests}
               reports={reports}
               notifications={notifications}
+              adminUnreadCount={adminUnreadCount}
               onMarkNotificationsRead={markNotificationsRead}
+              onOpenAdminMessages={() => setTab("admin-messages")}
             />
             <ProfileMenu
               tab={tab}
@@ -1320,6 +1340,10 @@ function SiteShell({ children, tab, setTab, isAdmin, user, profile, signOut, del
           </button>
           {isAdmin && (
             <>
+              <span className="text-slate-700">•</span>
+              <button onClick={() => setTab("admin-messages")} className="font-semibold text-yellow-200 hover:text-yellow-100">
+                Admin Messages
+              </button>
               <span className="text-slate-700">•</span>
               <button onClick={() => setTab("admin")} className="font-semibold text-slate-200 hover:text-white">
                 Admin
@@ -2545,7 +2569,177 @@ function StatsPage({ levels, requests, reports, statusRequests, changelogEntries
   );
 }
 
-function AdminDashboardPage({ isAdmin, levels, requests, statusRequests, reports, chatMessages, changelogEntries, publicProfiles, userBadges, setTab, onApproveRequest, onDenyRequest, onApproveStatusRequest, onDenyStatusRequest, onResolveReport, onDismissReport, onHideChatMessage, onDeleteChangelogEntry }) {
+
+function AdminMessagesPage({ isAdmin, user, profile, messages, reads, onSendMessage, onMarkRead, onToggleUrgent, onTogglePinned, onDeleteMessage, setTab }) {
+  const [messageText, setMessageText] = useState("");
+  const [isUrgent, setIsUrgent] = useState(false);
+  const [isPinned, setIsPinned] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+
+  useEffect(() => {
+    if (isAdmin && messages.length) onMarkRead();
+  }, [isAdmin, messages.length]);
+
+  if (!isAdmin) {
+    return (
+      <InfoPageShell title="Admin only" eyebrow="Locked">
+        <p>You need admin access to view admin messages.</p>
+        <Button onClick={() => setTab("home")} className="rounded-2xl">Back home</Button>
+      </InfoPageShell>
+    );
+  }
+
+  const readIds = new Set((reads || []).map((read) => String(read.message_id)));
+  const sortedMessages = [...(messages || [])].sort((a, b) => {
+    const pinnedDiff = Number(Boolean(b.is_pinned)) - Number(Boolean(a.is_pinned));
+    if (pinnedDiff !== 0) return pinnedDiff;
+    return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+  });
+  const unreadMessages = sortedMessages.filter((message) => String(message.created_by) !== String(user?.id) && !readIds.has(String(message.id)));
+
+  async function submit(event) {
+    event.preventDefault();
+    const clean = messageText.trim().replace(/\s+/g, " ").slice(0, 1000);
+    if (!clean) return;
+
+    setIsSending(true);
+    const ok = await onSendMessage({
+      message: clean,
+      is_urgent: isUrgent,
+      is_pinned: isPinned,
+    });
+    setIsSending(false);
+
+    if (ok) {
+      setMessageText("");
+      setIsUrgent(false);
+      setIsPinned(false);
+    }
+  }
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+      <section className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-6 shadow-2xl shadow-black/20 md:p-8">
+        <Badge className="mb-4 rounded-xl bg-yellow-300 text-black">Admin only</Badge>
+        <h2 className="text-5xl font-black tracking-tight md:text-7xl">Admin Messages</h2>
+        <p className="mt-3 max-w-2xl text-slate-300">
+          Private messages for admins only. Use this for moderation notes, site plans, urgent issues, and reminders.
+        </p>
+      </section>
+
+      <section className="grid gap-4 sm:grid-cols-3">
+        <StatCard label="Messages" value={sortedMessages.length} tone="cyan" body="Total admin-only messages." />
+        <StatCard label="Unread" value={unreadMessages.length} tone={unreadMessages.length ? "yellow" : "slate"} body="Unread by you." />
+        <StatCard label="Pinned" value={sortedMessages.filter((message) => message.is_pinned).length} tone="purple" body="Pinned notes stay at the top." />
+      </section>
+
+      <Card className="rounded-[2rem] border-white/10 bg-slate-950/80 text-slate-100 shadow-2xl shadow-black/30">
+        <CardContent className="p-6">
+          <form onSubmit={submit} className="space-y-4">
+            <div>
+              <h3 className="text-2xl font-black">Send admin message</h3>
+              <p className="mt-1 text-sm text-slate-400">Only admins can read or post here.</p>
+            </div>
+
+            <Textarea
+              value={messageText}
+              onChange={(event) => setMessageText(event.target.value.slice(0, 1000))}
+              placeholder="Type a private admin message..."
+              className="min-h-28 rounded-2xl border-white/10 bg-white/10"
+            />
+
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div className="flex flex-wrap gap-3">
+                <label className="flex cursor-pointer items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-bold text-slate-200">
+                  <input type="checkbox" checked={isUrgent} onChange={(event) => setIsUrgent(event.target.checked)} />
+                  Urgent
+                </label>
+                <label className="flex cursor-pointer items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-bold text-slate-200">
+                  <input type="checkbox" checked={isPinned} onChange={(event) => setIsPinned(event.target.checked)} />
+                  Pin to top
+                </label>
+              </div>
+
+              <Button type="submit" disabled={!messageText.trim() || isSending} className="rounded-2xl">
+                <Send className="mr-2 h-4 w-4" /> {isSending ? "Sending..." : "Send message"}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card className="rounded-[2rem] border-white/10 bg-slate-950/80 text-slate-100 shadow-2xl shadow-black/30">
+        <CardContent className="p-6">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h3 className="text-2xl font-black">Message board</h3>
+              <p className="mt-1 text-sm text-slate-400">Pinned messages are shown first. Urgent messages are highlighted.</p>
+            </div>
+            <Button onClick={onMarkRead} variant="secondary" className="rounded-2xl">
+              Mark all read
+            </Button>
+          </div>
+
+          <div className="mt-5 space-y-3">
+            {sortedMessages.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-white/15 p-8 text-center text-slate-500">
+                No admin messages yet.
+              </div>
+            ) : (
+              sortedMessages.map((message) => {
+                const isOwn = String(message.created_by) === String(user?.id);
+                const isUnread = !isOwn && !readIds.has(String(message.id));
+
+                return (
+                  <div
+                    key={message.id}
+                    className={cn(
+                      "rounded-[1.5rem] border p-4",
+                      message.is_urgent
+                        ? "border-red-300/30 bg-red-500/10"
+                        : message.is_pinned
+                        ? "border-yellow-300/30 bg-yellow-300/10"
+                        : isUnread
+                        ? "border-cyan-300/30 bg-cyan-500/10"
+                        : "border-white/10 bg-white/[0.04]"
+                    )}
+                  >
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          {message.is_pinned && <Badge className="rounded-xl bg-yellow-300 text-black">PINNED</Badge>}
+                          {message.is_urgent && <Badge className="rounded-xl bg-red-500/20 text-red-200">URGENT</Badge>}
+                          {isUnread && <Badge className="rounded-xl bg-cyan-500/20 text-cyan-200">UNREAD</Badge>}
+                          <Badge className="rounded-xl bg-white/10 text-slate-200">{message.created_by_name || message.created_by_email || "Admin"}</Badge>
+                        </div>
+                        <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-slate-100">{message.message}</p>
+                        <p className="mt-3 text-xs text-slate-500">{formatDateTime(message.created_at)}</p>
+                      </div>
+
+                      <div className="flex shrink-0 flex-wrap gap-2">
+                        <Button onClick={() => onTogglePinned(message)} variant="secondary" className="rounded-2xl px-3">
+                          {message.is_pinned ? "Unpin" : "Pin"}
+                        </Button>
+                        <Button onClick={() => onToggleUrgent(message)} variant="secondary" className="rounded-2xl px-3">
+                          {message.is_urgent ? "Not urgent" : "Urgent"}
+                        </Button>
+                        <Button onClick={() => onDeleteMessage(message)} variant="destructive" className="rounded-2xl px-3">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+}
+
+function AdminDashboardPage({ isAdmin, levels, requests, statusRequests, reports, chatMessages, changelogEntries, publicProfiles, userBadges, adminMessages, adminUnreadCount, setTab, onApproveRequest, onDenyRequest, onApproveStatusRequest, onDenyStatusRequest, onResolveReport, onDismissReport, onHideChatMessage, onDeleteChangelogEntry }) {
   if (!isAdmin) {
     return (
       <InfoPageShell title="Admin only" eyebrow="Locked">
@@ -2561,6 +2755,7 @@ function AdminDashboardPage({ isAdmin, levels, requests, statusRequests, reports
   const recentUpdates = (changelogEntries || []).slice(0, 6);
   const totalLevels = (levels.pooplist || []).length + (levels.peelist || []).length;
   const profilesWithBadges = (publicProfiles || []).filter((profile) => (userBadges || []).some((badge) => String(badge.user_id) === String(profile.user_id)));
+  const pinnedAdminMessages = (adminMessages || []).filter((message) => message.is_pinned).length;
 
   return (
     <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
@@ -2575,12 +2770,14 @@ function AdminDashboardPage({ isAdmin, levels, requests, statusRequests, reports
         <StatCard label="Level requests" value={pendingLevelRequests.length} tone={pendingLevelRequests.length ? "yellow" : "slate"} />
         <StatCard label="Status requests" value={(statusRequests || []).length} tone={(statusRequests || []).length ? "yellow" : "slate"} />
         <StatCard label="Reports" value={pendingReports.length} tone={pendingReports.length ? "red" : "slate"} />
+        <StatCard label="Admin messages" value={adminUnreadCount || 0} tone={adminUnreadCount ? "yellow" : "slate"} body={`${pinnedAdminMessages} pinned`} />
       </section>
 
-      <section className="grid gap-3 md:grid-cols-5">
+      <section className="grid gap-3 md:grid-cols-6">
         <Button onClick={() => setTab("pooplist")} className="rounded-2xl">Pooplist tools</Button>
         <Button onClick={() => setTab("peelist")} className="rounded-2xl">Peelist tools</Button>
         <Button onClick={() => setTab("changelog")} variant="secondary" className="rounded-2xl">Post update</Button>
+        <Button onClick={() => setTab("admin-messages")} variant="secondary" className="rounded-2xl">Admin messages</Button>
         <Button onClick={() => setTab("stats")} variant="secondary" className="rounded-2xl">View stats</Button>
         <Button onClick={() => setTab("home")} variant="secondary" className="rounded-2xl">Home</Button>
       </section>
@@ -3620,6 +3817,8 @@ export default function PeePooListWebsite() {
   const [publicProfiles, setPublicProfiles] = useState([]);
   const [userBadges, setUserBadges] = useState([]);
   const [levelComments, setLevelComments] = useState([]);
+  const [adminMessages, setAdminMessages] = useState([]);
+  const [adminMessageReads, setAdminMessageReads] = useState([]);
   const [lastChatSentAt, setLastChatSentAt] = useState(0);
   const [lastLevelCommentSentAt, setLastLevelCommentSentAt] = useState(0);
 
@@ -3826,6 +4025,46 @@ export default function PeePooListWebsite() {
     setUserBadges(data || []);
   }
 
+  async function loadAdminMessages() {
+    if (!supabase || !isAdmin) {
+      setAdminMessages([]);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("admin_messages")
+      .select("*")
+      .order("is_pinned", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(100);
+
+    if (error) {
+      setStatusMessage(`Could not load admin messages: ${error.message}`);
+      return;
+    }
+
+    setAdminMessages(data || []);
+  }
+
+  async function loadAdminMessageReads(nextUser = user) {
+    if (!supabase || !isAdmin || !nextUser) {
+      setAdminMessageReads([]);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("admin_message_reads")
+      .select("*")
+      .eq("user_id", nextUser.id);
+
+    if (error) {
+      setAdminMessageReads([]);
+      return;
+    }
+
+    setAdminMessageReads(data || []);
+  }
+
   useEffect(() => {
     function handleHashChange() {
       const nextTab = initialTabFromHash();
@@ -3871,6 +4110,8 @@ export default function PeePooListWebsite() {
       await loadLevelComments();
       await loadPublicProfiles();
       await loadUserBadges();
+      await loadAdminMessages();
+      await loadAdminMessageReads(nextUser);
     }
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -3887,6 +4128,8 @@ export default function PeePooListWebsite() {
     loadChatMessages();
     loadPublicProfiles();
     loadUserBadges();
+    loadAdminMessages();
+    loadAdminMessageReads();
 
     return () => listener.subscription.unsubscribe();
   }, []);
@@ -3897,7 +4140,106 @@ export default function PeePooListWebsite() {
     loadReports();
     loadNotifications(user);
     loadUserRequests(user);
+    loadAdminMessages();
+    loadAdminMessageReads(user);
   }, [isAdmin, user]);
+
+  const adminUnreadCount = useMemo(() => {
+    if (!isAdmin || !user) return 0;
+    const readIds = new Set((adminMessageReads || []).map((read) => String(read.message_id)));
+    return (adminMessages || []).filter((message) => String(message.created_by) !== String(user.id) && !readIds.has(String(message.id))).length;
+  }, [isAdmin, user, adminMessages, adminMessageReads]);
+
+  async function sendAdminMessage(form) {
+    if (!supabase || !isAdmin || !user) {
+      setStatusMessage("Admin access is required to send admin messages.");
+      return false;
+    }
+
+    const cleanMessage = String(form.message || "").trim().replace(/\s+/g, " ").slice(0, 1000);
+    if (!cleanMessage) return false;
+
+    try {
+      const { error } = await supabase.from("admin_messages").insert({
+        message: cleanMessage,
+        is_urgent: Boolean(form.is_urgent),
+        is_pinned: Boolean(form.is_pinned),
+        created_by: user.id,
+        created_by_email: user.email || null,
+        created_by_name: profileLabel(profile, user),
+      });
+
+      if (error) throw error;
+
+      await loadAdminMessages();
+      await loadAdminMessageReads(user);
+      setStatusMessage("Admin message sent.");
+      return true;
+    } catch (error) {
+      setStatusMessage(`Could not send admin message: ${error.message}`);
+      return false;
+    }
+  }
+
+  async function markAdminMessagesRead() {
+    if (!supabase || !isAdmin || !user || adminMessages.length === 0) return;
+
+    try {
+      const rows = adminMessages.map((message) => ({
+        message_id: message.id,
+        user_id: user.id,
+        read_at: new Date().toISOString(),
+      }));
+
+      const { error } = await supabase
+        .from("admin_message_reads")
+        .upsert(rows, { onConflict: "message_id,user_id" });
+
+      if (error) throw error;
+      await loadAdminMessageReads(user);
+    } catch (error) {
+      setStatusMessage(`Could not mark admin messages read: ${error.message}`);
+    }
+  }
+
+  async function toggleAdminMessagePinned(message) {
+    if (!supabase || !isAdmin) return;
+
+    try {
+      const { error } = await supabase.from("admin_messages").update({ is_pinned: !message.is_pinned }).eq("id", message.id);
+      if (error) throw error;
+      await loadAdminMessages();
+    } catch (error) {
+      setStatusMessage(`Could not update admin message: ${error.message}`);
+    }
+  }
+
+  async function toggleAdminMessageUrgent(message) {
+    if (!supabase || !isAdmin) return;
+
+    try {
+      const { error } = await supabase.from("admin_messages").update({ is_urgent: !message.is_urgent }).eq("id", message.id);
+      if (error) throw error;
+      await loadAdminMessages();
+    } catch (error) {
+      setStatusMessage(`Could not update admin message: ${error.message}`);
+    }
+  }
+
+  async function deleteAdminMessage(message) {
+    if (!supabase || !isAdmin) return;
+    const confirmed = window.confirm("Delete this admin message?");
+    if (!confirmed) return;
+
+    try {
+      const { error } = await supabase.from("admin_messages").delete().eq("id", message.id);
+      if (error) throw error;
+      await loadAdminMessages();
+      await loadAdminMessageReads(user);
+    } catch (error) {
+      setStatusMessage(`Could not delete admin message: ${error.message}`);
+    }
+  }
 
   async function signIn() {
     if (!supabase || !authEmail.trim() || !authPassword) return;
@@ -4836,6 +5178,23 @@ export default function PeePooListWebsite() {
         />
       );
     }
+    if (tab === "admin-messages") {
+      return (
+        <AdminMessagesPage
+          isAdmin={isAdmin}
+          user={user}
+          profile={profile}
+          messages={adminMessages}
+          reads={adminMessageReads}
+          onSendMessage={sendAdminMessage}
+          onMarkRead={markAdminMessagesRead}
+          onToggleUrgent={toggleAdminMessageUrgent}
+          onTogglePinned={toggleAdminMessagePinned}
+          onDeleteMessage={deleteAdminMessage}
+          setTab={setTab}
+        />
+      );
+    }
     if (tab === "admin") {
       return (
         <AdminDashboardPage
@@ -4848,6 +5207,8 @@ export default function PeePooListWebsite() {
           changelogEntries={changelogEntries}
           publicProfiles={publicProfiles}
           userBadges={userBadges}
+          adminMessages={adminMessages}
+          adminUnreadCount={adminUnreadCount}
           setTab={setTab}
           onApproveRequest={approveRequest}
           onDenyRequest={denyRequest}
@@ -4955,7 +5316,7 @@ export default function PeePooListWebsite() {
         setTab={setTab}
       />
     );
-  }, [tab, levels, isAdmin, user, profile, publicProfiles, userBadges, authEmail, authPassword, authMessage, requests, reports, userRequests, statusRequests, changelogEntries, chatMessages, levelComments, notifications, statusMessage]);
+  }, [tab, levels, isAdmin, user, profile, publicProfiles, userBadges, authEmail, authPassword, authMessage, requests, reports, userRequests, statusRequests, changelogEntries, chatMessages, levelComments, adminMessages, adminMessageReads, notifications, statusMessage]);
 
   return (
     <SiteShell
@@ -4975,6 +5336,7 @@ export default function PeePooListWebsite() {
       statusRequests={statusRequests}
       reports={reports}
       notifications={notifications}
+      adminUnreadCount={adminUnreadCount}
       markNotificationsRead={markNotificationsRead}
     >
       <AnimatePresence mode="wait">{visiblePage}</AnimatePresence>
