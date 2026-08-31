@@ -516,7 +516,7 @@ function ChangeEmailPanel({ user, onCancel, onChangeEmail }) {
       initial={{ opacity: 0, x: 14, scale: 0.98 }}
       animate={{ opacity: 1, x: 0, scale: 1 }}
       exit={{ opacity: 0, x: 14, scale: 0.98 }}
-      className="absolute right-[17rem] top-12 z-50 w-[330px] rounded-[2rem] border border-white/10 bg-slate-950/95 p-5 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl max-md:right-0 max-md:top-[21rem]"
+      className="absolute right-[17rem] top-12 z-50 max-h-[75vh] w-[330px] overflow-y-auto rounded-[2rem] border border-white/10 bg-slate-950/95 p-5 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl max-md:right-0 max-md:top-12 max-md:w-[calc(100vw-1rem)] max-md:max-w-[22rem]"
     >
       <h3 className="text-lg font-black">Change Email</h3>
       <p className="mt-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-sm text-slate-300">
@@ -644,7 +644,7 @@ function ChangePasswordPanel({ onCancel, onChangePassword }) {
       initial={{ opacity: 0, x: 14, scale: 0.98 }}
       animate={{ opacity: 1, x: 0, scale: 1 }}
       exit={{ opacity: 0, x: 14, scale: 0.98 }}
-      className="absolute right-[17rem] top-12 z-50 w-[330px] rounded-[2rem] border border-white/10 bg-slate-950/95 p-5 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl max-md:right-0 max-md:top-[21rem]"
+      className="absolute right-[17rem] top-12 z-50 max-h-[75vh] w-[330px] overflow-y-auto rounded-[2rem] border border-white/10 bg-slate-950/95 p-5 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl max-md:right-0 max-md:top-12 max-md:w-[calc(100vw-1rem)] max-md:max-w-[22rem]"
     >
       <h3 className="text-lg font-black">Change Password</h3>
 
@@ -728,7 +728,7 @@ function StatusRequestPanel({ onCancel, onSubmitStatusRequest }) {
       initial={{ opacity: 0, x: 14, scale: 0.98 }}
       animate={{ opacity: 1, x: 0, scale: 1 }}
       exit={{ opacity: 0, x: 14, scale: 0.98 }}
-      className="absolute right-[17rem] top-12 z-50 w-[360px] rounded-[2rem] border border-white/10 bg-slate-950/95 p-5 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl max-md:right-0 max-md:top-[21rem]"
+      className="absolute right-[17rem] top-12 z-50 max-h-[75vh] w-[360px] overflow-y-auto rounded-[2rem] border border-white/10 bg-slate-950/95 p-5 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl max-md:right-0 max-md:top-12 max-md:w-[calc(100vw-1rem)] max-md:max-w-[22rem]"
     >
       <div className="flex items-center gap-3">
         <label className="text-sm font-black text-slate-200">Request:</label>
@@ -816,7 +816,7 @@ function PublicProfilePanel({ user, profile, onCancel, onUpdateProfile, onUpload
       initial={{ opacity: 0, x: 14, scale: 0.98 }}
       animate={{ opacity: 1, x: 0, scale: 1 }}
       exit={{ opacity: 0, x: 14, scale: 0.98 }}
-      className="absolute right-[17rem] top-12 z-50 w-[390px] rounded-[2rem] border border-white/10 bg-slate-950/95 p-5 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl max-md:right-0 max-md:top-[21rem]"
+      className="absolute right-[17rem] top-12 z-50 max-h-[75vh] w-[390px] overflow-y-auto rounded-[2rem] border border-white/10 bg-slate-950/95 p-5 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl max-md:right-0 max-md:top-12 max-md:w-[calc(100vw-1rem)] max-md:max-w-[22rem]"
     >
       <h3 className="text-xl font-black">Edit public profile</h3>
       <p className="mt-1 text-xs text-slate-400">This is what other visitors can see on your PeePooList profile.</p>
@@ -900,6 +900,10 @@ function MoreMenu({ tab, setTab, user, isAdmin }) {
   }, [tab]);
 
   const items = [
+    { tab: "home", label: "Home", show: true, mobileOnly: true },
+    { tab: "pooplist", label: "The Pooplist", show: true, mobileOnly: true },
+    { tab: "peelist", label: "The Peelist", show: true, mobileOnly: true },
+    { tab: "stats", label: "Stats", show: true, mobileOnly: true },
     { tab: "changelog", label: "Changelog + Chat", show: true },
     { tab: "users", label: "Users", show: true },
     { tab: "my-requests", label: "My Requests", show: Boolean(user) },
@@ -913,8 +917,8 @@ function MoreMenu({ tab, setTab, user, isAdmin }) {
 
   return (
     <div className="relative">
-      <Button onClick={() => setOpen((value) => !value)} variant="secondary" className="rounded-2xl">
-        Menu <ChevronDown className="ml-2 h-4 w-4" />
+      <Button onClick={() => setOpen((value) => !value)} variant="secondary" className="rounded-2xl px-3 sm:px-4">
+        <span className="hidden xs:inline sm:inline">Menu</span><span className="sm:hidden">Menu</span> <ChevronDown className="ml-1 h-4 w-4 sm:ml-2" />
       </Button>
 
       <AnimatePresence>
@@ -923,7 +927,7 @@ function MoreMenu({ tab, setTab, user, isAdmin }) {
             initial={{ opacity: 0, y: -8, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.98 }}
-            className="absolute right-0 top-12 z-50 w-56 rounded-[1.5rem] border border-white/10 bg-slate-950/95 p-2 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl"
+            className="absolute right-0 top-12 z-50 max-h-[70vh] w-[calc(100vw-1rem)] max-w-[20rem] overflow-y-auto rounded-[1.5rem] border border-white/10 bg-slate-950/95 p-2 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl"
           >
             {items.map((item) => (
               <button
@@ -934,6 +938,7 @@ function MoreMenu({ tab, setTab, user, isAdmin }) {
                 }}
                 className={cn(
                   "block w-full rounded-2xl px-4 py-3 text-left text-sm font-bold transition hover:bg-white/10",
+                  item.mobileOnly ? "sm:hidden" : "",
                   tab === item.tab ? "bg-white text-slate-950 hover:bg-white" : "text-slate-200"
                 )}
               >
@@ -980,14 +985,14 @@ function ProfileMenu({ tab, user, isAdmin, profile, onSignOut, onDeleteAccount, 
           setActivePanel("");
         }}
         variant="secondary"
-        className="rounded-2xl"
+        className="rounded-2xl px-3 sm:px-4"
       >
         {user ? (
-          <ProfileAvatar profile={profile} user={user} className="mr-2 h-5 w-5 rounded-lg" textClassName="text-xs" />
+          <ProfileAvatar profile={profile} user={user} className="h-5 w-5 rounded-lg sm:mr-2" textClassName="text-xs" />
         ) : (
-          <UserCircle className="mr-2 h-4 w-4" />
+          <UserCircle className="h-4 w-4 sm:mr-2" />
         )}
-        Profile
+        <span className="hidden sm:inline">Profile</span>
       </Button>
 
       <AnimatePresence>
@@ -996,7 +1001,7 @@ function ProfileMenu({ tab, user, isAdmin, profile, onSignOut, onDeleteAccount, 
             initial={{ opacity: 0, y: -8, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.98 }}
-            className="absolute right-0 top-12 z-50 w-64 rounded-[2rem] border border-white/10 bg-slate-950/95 p-4 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl"
+            className="absolute right-0 top-12 z-50 max-h-[75vh] w-[calc(100vw-1rem)] max-w-[20rem] overflow-y-auto rounded-[2rem] border border-white/10 bg-slate-950/95 p-4 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl"
           >
             {user ? (
               <>
@@ -1109,7 +1114,7 @@ function NotificationsMenu({ tab, user, isAdmin, requests, statusRequests, repor
 
   return (
     <div className="relative">
-      <Button onClick={() => setOpen((value) => !value)} variant="secondary" className="relative rounded-2xl">
+      <Button onClick={() => setOpen((value) => !value)} variant="secondary" className="relative rounded-2xl px-3 sm:px-4">
         <Bell className="h-4 w-4" />
         {unreadCount > 0 && (
           <span className="absolute -bottom-1 -right-1 grid h-5 min-w-5 place-items-center rounded-full bg-red-600 px-1 text-[10px] font-black text-white">
@@ -1124,7 +1129,7 @@ function NotificationsMenu({ tab, user, isAdmin, requests, statusRequests, repor
             initial={{ opacity: 0, y: -8, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.98 }}
-            className="absolute right-0 top-12 z-50 w-80 rounded-[2rem] border border-white/10 bg-slate-950/95 p-4 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl"
+            className="absolute right-0 top-12 z-50 max-h-[75vh] w-[calc(100vw-1rem)] max-w-[22rem] overflow-y-auto rounded-[2rem] border border-white/10 bg-slate-950/95 p-4 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl"
           >
             <div className="mb-3 flex items-center justify-between gap-3">
               <h3 className="text-lg font-black">Notifications</h3>
@@ -1256,28 +1261,28 @@ function SiteShell({ children, tab, setTab, isAdmin, user, profile, signOut, del
       </div>
 
       <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0c1220]/80 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-4 md:flex-row md:items-center md:justify-between">
-          <button onClick={() => setTab("home")} className="group flex items-center gap-3 text-left">
-            <div className="grid h-12 w-12 place-items-center overflow-hidden rounded-2xl bg-[#007a55] shadow-lg shadow-emerald-900/30 transition group-hover:scale-105">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-3 py-3 md:px-4 md:py-4">
+          <button onClick={() => setTab("home")} className="group flex min-w-0 items-center gap-2 text-left sm:gap-3">
+            <div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-2xl bg-[#007a55] shadow-lg shadow-emerald-900/30 transition group-hover:scale-105 sm:h-12 sm:w-12">
               <img src="/logo.png" alt="PeePooList logo" className="h-full w-full object-cover" />
             </div>
-            <div>
-              <h1 className="text-2xl font-black tracking-tight md:text-3xl">PeePooList</h1>
-              <p className="text-xs uppercase tracking-[0.28em] text-slate-400">peepoolist.com</p>
+            <div className="min-w-0">
+              <h1 className="truncate text-xl font-black tracking-tight sm:text-2xl md:text-3xl">PeePooList</h1>
+              <p className="hidden text-xs uppercase tracking-[0.28em] text-slate-400 sm:block">peepoolist.com</p>
             </div>
           </button>
 
-          <nav className="flex flex-wrap items-center gap-2">
-            <Button variant={tab === "home" ? "default" : "secondary"} onClick={() => setTab("home")} className="rounded-2xl">
+          <nav className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+            <Button variant={tab === "home" ? "default" : "secondary"} onClick={() => setTab("home")} className="hidden rounded-2xl sm:inline-flex">
               <Home className="mr-2 h-4 w-4" /> Home
             </Button>
-            <Button variant={tab === "pooplist" ? "default" : "secondary"} onClick={() => setTab("pooplist")} className="rounded-2xl">
+            <Button variant={tab === "pooplist" ? "default" : "secondary"} onClick={() => setTab("pooplist")} className="hidden rounded-2xl sm:inline-flex">
               The Pooplist
             </Button>
-            <Button variant={tab === "peelist" ? "default" : "secondary"} onClick={() => setTab("peelist")} className="rounded-2xl">
+            <Button variant={tab === "peelist" ? "default" : "secondary"} onClick={() => setTab("peelist")} className="hidden rounded-2xl sm:inline-flex">
               The Peelist
             </Button>
-            <Button variant={tab === "stats" ? "default" : "secondary"} onClick={() => setTab("stats")} className="rounded-2xl">
+            <Button variant={tab === "stats" ? "default" : "secondary"} onClick={() => setTab("stats")} className="hidden rounded-2xl sm:inline-flex">
               Stats
             </Button>
             <MoreMenu tab={tab} setTab={setTab} user={user} isAdmin={isAdmin} />
@@ -1311,9 +1316,9 @@ function SiteShell({ children, tab, setTab, isAdmin, user, profile, signOut, del
         </div>
       </header>
 
-      <main className="relative mx-auto max-w-6xl px-4 py-8">{children}</main>
+      <main className="relative mx-auto max-w-6xl px-3 py-5 sm:px-4 sm:py-8">{children}</main>
 
-      <footer className="relative mx-auto max-w-6xl px-4 pb-8">
+      <footer className="relative mx-auto max-w-6xl px-3 pb-6 sm:px-4 sm:pb-8">
         <div className="flex flex-wrap items-center justify-center gap-3 rounded-[2rem] border border-white/10 bg-slate-950/60 p-5 text-sm text-slate-400">
           <button onClick={() => setTab("about")} className="font-semibold text-slate-200 hover:text-white">
             About
@@ -1466,7 +1471,7 @@ function HomePage({ user, isAdmin, signIn, signUp, signInWithGoogle, signInWithG
         <Card className="overflow-hidden rounded-[2rem] border-white/10 bg-white/[0.04] text-slate-100 shadow-2xl shadow-black/30">
           <CardContent className="p-7 md:p-10">
             <Badge className="mb-5 rounded-xl bg-yellow-300 text-black">Geometry Dash challenge rankings</Badge>
-            <h2 className="text-4xl font-black leading-tight tracking-tight md:text-6xl">A Geometry Dash level list for PeePooList rankings.</h2>
+            <h2 className="text-3xl font-black leading-tight tracking-tight md:text-6xl">A Geometry Dash level list for PeePooList rankings.</h2>
             <p className="mt-5 max-w-2xl text-lg text-slate-300">
               PeePooList ranks Geometry Dash levels in two categories: possible levels on <b>The Pooplist</b> and impossible levels on <b>The Peelist</b>. Browse the ranked lists, submit change requests, check updates, and talk about the placements.
             </p>
@@ -2128,7 +2133,7 @@ function ChangelogPage({ entries, chatMessages, user, isAdmin, onAddEntry, onDel
     <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
       <section className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-6 shadow-2xl shadow-black/20 md:p-8">
         <Badge className="mb-4 rounded-xl bg-cyan-500/20 text-cyan-200">Updates and chat</Badge>
-        <h2 className="text-5xl font-black tracking-tight md:text-7xl">Changelog</h2>
+        <h2 className="text-4xl font-black tracking-tight md:text-7xl">Changelog</h2>
         <p className="mt-3 max-w-2xl text-slate-300">Public updates for site changes, list changes, and a simple signed-in public chat.</p>
       </section>
 
@@ -2329,7 +2334,7 @@ function UsersPage({ publicProfiles, userBadges, chatMessages, levelComments, se
     <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
       <section className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-6 shadow-2xl shadow-black/20 md:p-8">
         <Badge className="mb-4 rounded-xl bg-emerald-500/20 text-emerald-200">Community</Badge>
-        <h2 className="text-5xl font-black tracking-tight md:text-7xl">Users</h2>
+        <h2 className="text-4xl font-black tracking-tight md:text-7xl">Users</h2>
         <p className="mt-3 max-w-2xl text-slate-300">
           Browse PeePooList profiles, handles, bios, badges, achievements, and community activity.
         </p>
@@ -2491,7 +2496,7 @@ function StatsPage({ levels, requests, reports, statusRequests, changelogEntries
     <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
       <section className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-6 shadow-2xl shadow-black/20 md:p-8">
         <Badge className="mb-4 rounded-xl bg-purple-500/20 text-purple-200">Site stats</Badge>
-        <h2 className="text-5xl font-black tracking-tight md:text-7xl">Stats</h2>
+        <h2 className="text-4xl font-black tracking-tight md:text-7xl">Stats</h2>
         <p className="mt-3 max-w-2xl text-slate-300">A live-ish dashboard for PeePooList levels, profiles, updates, chat, and moderation activity.</p>
       </section>
 
@@ -2621,7 +2626,7 @@ function AdminMessagesPage({ isAdmin, user, profile, messages, reads, onSendMess
     <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
       <section className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-6 shadow-2xl shadow-black/20 md:p-8">
         <Badge className="mb-4 rounded-xl bg-yellow-300 text-black">Admin only</Badge>
-        <h2 className="text-5xl font-black tracking-tight md:text-7xl">Admin Messages</h2>
+        <h2 className="text-4xl font-black tracking-tight md:text-7xl">Admin Messages</h2>
         <p className="mt-3 max-w-2xl text-slate-300">
           Private messages for admins only. Use this for moderation notes, site plans, urgent issues, and reminders.
         </p>
@@ -2761,7 +2766,7 @@ function AdminDashboardPage({ isAdmin, levels, requests, statusRequests, reports
     <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
       <section className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-6 shadow-2xl shadow-black/20 md:p-8">
         <Badge className="mb-4 rounded-xl bg-yellow-300 text-black">Admin dashboard</Badge>
-        <h2 className="text-5xl font-black tracking-tight md:text-7xl">Admin</h2>
+        <h2 className="text-4xl font-black tracking-tight md:text-7xl">Admin</h2>
         <p className="mt-3 max-w-2xl text-slate-300">One place for moderation, request queues, reports, chat cleanup, and quick site checks.</p>
       </section>
 
@@ -3663,7 +3668,7 @@ function ListPage({ listType, levels, isAdmin, user, requests, reports, addLevel
             <Badge className={listType === "pooplist" ? "mb-4 rounded-xl bg-amber-500/20 text-amber-200" : "mb-4 rounded-xl bg-yellow-300/20 text-yellow-100"}>
               {searchTerm ? `${filteredLevels.length}/${levels.length}` : levels.length} ranked levels
             </Badge>
-            <h2 className="text-5xl font-black tracking-tight md:text-7xl">{title}</h2>
+            <h2 className="text-4xl font-black tracking-tight md:text-7xl">{title}</h2>
             <p className="mt-3 max-w-2xl text-slate-300">{subtitle}</p>
           </div>
 
