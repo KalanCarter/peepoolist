@@ -173,6 +173,36 @@ function openLevelUrl(url) {
   window.open(safeUrl, "_blank", "noopener,noreferrer");
 }
 
+const MESSAGE_COOLDOWN_MS = 10000;
+
+function validatePublicMessage(value) {
+  const clean = String(value || "").trim().replace(/\s+/g, " ").slice(0, 280);
+
+  if (!clean) {
+    return { ok: false, message: "Type a message first.", clean: "" };
+  }
+
+  if (clean.length < 2) {
+    return { ok: false, message: "Message is too short.", clean };
+  }
+
+  if (/(.)\1{24,}/i.test(clean.replace(/\s/g, ""))) {
+    return { ok: false, message: "Message looks too spammy.", clean };
+  }
+
+  const linkCount = (clean.match(/https?:\/\//gi) || []).length;
+  if (linkCount > 1) {
+    return { ok: false, message: "Only one link per message.", clean };
+  }
+
+  return { ok: true, message: "", clean };
+}
+
+function cooldownSecondsLeft(lastSentAt) {
+  const remainingMs = MESSAGE_COOLDOWN_MS - (Date.now() - Number(lastSentAt || 0));
+  return Math.max(0, Math.ceil(remainingMs / 1000));
+}
+
 function levelDetailTab(levelId) {
   return `level:${String(levelId || "")}`;
 }
@@ -1336,17 +1366,50 @@ function AuthBox({ user, isAdmin, signIn, signUp, signInWithGoogle, signInWithGi
   );
 }
 
-function HomePage({ user, isAdmin, signIn, signUp, signInWithGoogle, signInWithGithub, signOut, authEmail, setAuthEmail, authPassword, setAuthPassword, authMessage, requestCount, statusRequests, approveStatusRequest, denyStatusRequest, isConfigured }) {
+function HomePage({ user, isAdmin, signIn, signUp, signInWithGoogle, signInWithGithub, signOut, authEmail, setAuthEmail, authPassword, setAuthPassword, authMessage, requestCount, statusRequests, approveStatusRequest, denyStatusRequest, isConfigured, levels, changelogEntries, chatMessages, publicProfiles, userBadges, setTab }) {
+  const poopLevels = levels?.pooplist || [];
+  const peeLevels = levels?.peelist || [];
+  const allLevels = [
+    ...poopLevels.map((level) => ({ ...level, list_name: "Pooplist" })),
+    ...peeLevels.map((level) => ({ ...level, list_name: "Peelist" })),
+  ];
+  const newestLevel = [...allLevels].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))[0];
+  const latestUpdate = [...(changelogEntries || [])].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))[0];
+  const recentChat = (chatMessages || []).slice(0, 3);
+  const totalBadges = (userBadges || []).length;
+
+  const homeStats = [
+    ["Pooplist", poopLevels.length, "possible levels", "pooplist"],
+    ["Peelist", peeLevels.length, "impossible levels", "peelist"],
+    ["Profiles", (publicProfiles || []).length, "public users", "stats"],
+    ["Badges", totalBadges, "earned/awarded", "stats"],
+  ];
+
   return (
     <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
-      <section className="grid gap-6 md:grid-cols-[1.2fr_.8fr]">
+      <section className="grid gap-6 lg:grid-cols-[1.25fr_.75fr]">
         <Card className="overflow-hidden rounded-[2rem] border-white/10 bg-white/[0.04] text-slate-100 shadow-2xl shadow-black/30">
           <CardContent className="p-7 md:p-10">
             <Badge className="mb-5 rounded-xl bg-yellow-300 text-black">Geometry Dash challenge rankings</Badge>
             <h2 className="text-4xl font-black leading-tight tracking-tight md:text-6xl">A Geometry Dash level list for PeePooList rankings.</h2>
             <p className="mt-5 max-w-2xl text-lg text-slate-300">
-              PeePooList ranks Geometry Dash levels in two categories: possible levels on <b>The Pooplist</b> and impossible levels on <b>The Peelist</b>. Browse the ranked lists, submit level change requests, and follow the current placements.
+              PeePooList ranks Geometry Dash levels in two categories: possible levels on <b>The Pooplist</b> and impossible levels on <b>The Peelist</b>. Browse the ranked lists, submit change requests, check updates, and talk about the placements.
             </p>
+
+            <div className="mt-7 grid gap-3 sm:grid-cols-2">
+              <Button onClick={() => setTab("pooplist")} className="rounded-2xl bg-[#c0ffbf] text-slate-950 hover:bg-[#d3ffd2]">
+                View The Pooplist
+              </Button>
+              <Button onClick={() => setTab("peelist")} variant="secondary" className="rounded-2xl">
+                View The Peelist
+              </Button>
+              <Button onClick={() => setTab("changelog")} variant="secondary" className="rounded-2xl">
+                Changelog + Chat
+              </Button>
+              <Button onClick={() => setTab("stats")} variant="secondary" className="rounded-2xl">
+                Site Stats
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
@@ -1367,12 +1430,86 @@ function HomePage({ user, isAdmin, signIn, signUp, signInWithGoogle, signInWithG
         />
       </section>
 
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {homeStats.map(([label, value, body, target]) => (
+          <button
+            key={label}
+            onClick={() => setTab(target)}
+            className="rounded-[1.7rem] border border-white/10 bg-slate-950/70 p-5 text-left transition hover:-translate-y-0.5 hover:bg-white/[0.06]"
+          >
+            <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">{label}</p>
+            <p className="mt-2 text-4xl font-black text-white">{value}</p>
+            <p className="mt-1 text-sm text-slate-400">{body}</p>
+          </button>
+        ))}
+      </section>
+
+      <section className="grid gap-6 lg:grid-cols-3">
+        <Card className="rounded-[2rem] border-white/10 bg-slate-950/80 text-slate-100 shadow-2xl shadow-black/30">
+          <CardContent className="p-6">
+            <h3 className="text-2xl font-black">Newest level</h3>
+            {newestLevel ? (
+              <div className="mt-4">
+                <img src={imageFor(newestLevel, Math.max(0, Number(newestLevel.rank || 1) - 1), newestLevel.list_type)} alt={`${newestLevel.name} thumbnail`} className="h-36 w-full rounded-2xl border border-white/10 object-cover" />
+                <p className="mt-3 text-xs font-bold uppercase tracking-[0.22em] text-slate-500">{newestLevel.list_name} · #{newestLevel.rank}</p>
+                <h4 className="mt-1 text-xl font-black">{newestLevel.name}</h4>
+                <p className="mt-1 text-sm text-slate-400">Creator: {newestLevel.creator || "Unknown"}</p>
+                <Button onClick={() => setTab(levelDetailTab(newestLevel.id))} variant="secondary" className="mt-4 w-full rounded-2xl">
+                  Open level page
+                </Button>
+              </div>
+            ) : (
+              <p className="mt-4 text-sm text-slate-400">No levels loaded yet.</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-[2rem] border-white/10 bg-slate-950/80 text-slate-100 shadow-2xl shadow-black/30">
+          <CardContent className="p-6">
+            <h3 className="text-2xl font-black">Latest update</h3>
+            {latestUpdate ? (
+              <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                <Badge className="rounded-xl bg-cyan-500/20 text-cyan-200">{latestUpdate.kind || "update"}</Badge>
+                <h4 className="mt-3 text-xl font-black">{latestUpdate.title}</h4>
+                {latestUpdate.body && <p className="mt-2 line-clamp-4 text-sm leading-6 text-slate-300">{latestUpdate.body}</p>}
+                <p className="mt-3 text-xs text-slate-500">{formatDateTime(latestUpdate.created_at)}</p>
+                <Button onClick={() => setTab("changelog")} variant="secondary" className="mt-4 w-full rounded-2xl">
+                  View changelog
+                </Button>
+              </div>
+            ) : (
+              <p className="mt-4 text-sm text-slate-400">No changelog updates yet.</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-[2rem] border-white/10 bg-slate-950/80 text-slate-100 shadow-2xl shadow-black/30">
+          <CardContent className="p-6">
+            <h3 className="text-2xl font-black">Recent chat</h3>
+            <div className="mt-4 space-y-3">
+              {recentChat.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-white/15 p-5 text-center text-sm text-slate-500">No chat messages yet.</div>
+              ) : (
+                recentChat.map((message) => (
+                  <div key={message.id} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                    <p className="text-xs text-slate-500">{message.display_name || "User"} · {formatDateTime(message.created_at)}</p>
+                    <p className="mt-1 line-clamp-3 text-sm text-slate-200">{message.message}</p>
+                  </div>
+                ))
+              )}
+            </div>
+            <Button onClick={() => setTab("changelog")} variant="secondary" className="mt-4 w-full rounded-2xl">
+              Open chat
+            </Button>
+          </CardContent>
+        </Card>
+      </section>
 
       <section className="grid gap-4 md:grid-cols-3">
         {[
           ["💩", "Pooplist", "Ranked levels that are considered possible."],
           ["💧", "Peelist", "Ranked levels that are considered impossible."],
-          ["🧻", "Requests", "Signed-in users can suggest additions, removals, or edits for admin review."],
+          ["🧻", "Requests", "Signed-in users can suggest additions, removals, reports, and edits for admin review."],
         ].map(([emoji, title, body]) => (
           <Card key={title} className="rounded-[1.7rem] border-white/10 bg-white/[0.04] text-slate-100">
             <CardContent className="p-6">
@@ -1385,11 +1522,11 @@ function HomePage({ user, isAdmin, signIn, signUp, signInWithGoogle, signInWithG
       </section>
 
       <section className="rounded-[2rem] border border-white/10 bg-slate-950/60 p-6 text-slate-300">
-        <h3 className="text-xl font-black text-white">Security model</h3>
+        <h3 className="text-xl font-black text-white">Safety and moderation</h3>
         <p className="mt-2 text-sm leading-6">
-          Level editing is protected by Supabase Auth and database Row Level Security. The frontend only shows buttons for admins, but the database still rejects unauthorized inserts, edits, approvals, and deletions.
+          Level editing, reports, comments, profiles, and chat are protected by Supabase Auth and database Row Level Security. New chat messages and level comments also have cooldown limits to slow down spam.
         </p>
-        <p className="mt-3 text-sm text-slate-400">Pending requests: <span className="font-bold text-white">{requestCount}</span></p>
+        <p className="mt-3 text-sm text-slate-400">Pending requests visible to admins: <span className="font-bold text-white">{requestCount}</span></p>
       </section>
 
       {isAdmin && (
@@ -1409,6 +1546,7 @@ function HomePage({ user, isAdmin, signIn, signUp, signInWithGoogle, signInWithG
     </motion.div>
   );
 }
+
 
 function InfoPageShell({ title, eyebrow, children }) {
   return (
@@ -3220,6 +3358,8 @@ export default function PeePooListWebsite() {
   const [publicProfiles, setPublicProfiles] = useState([]);
   const [userBadges, setUserBadges] = useState([]);
   const [levelComments, setLevelComments] = useState([]);
+  const [lastChatSentAt, setLastChatSentAt] = useState(0);
+  const [lastLevelCommentSentAt, setLastLevelCommentSentAt] = useState(0);
 
   const isAdmin = profile?.role === "admin";
   const isPriority = profile?.role === "priority";
@@ -4151,10 +4291,22 @@ export default function PeePooListWebsite() {
       return false;
     }
 
+    const cooldownLeft = cooldownSecondsLeft(lastChatSentAt);
+    if (cooldownLeft > 0) {
+      setStatusMessage(`Slow down a little. Chat again in ${cooldownLeft} second${cooldownLeft === 1 ? "" : "s"}.`);
+      return false;
+    }
+
+    const validation = validatePublicMessage(message);
+    if (!validation.ok) {
+      setStatusMessage(validation.message);
+      return false;
+    }
+
     try {
       const displayName = profileLabel(profile, user);
       const { error } = await supabase.from("public_chat_messages").insert({
-        message: String(message || "").trim(),
+        message: validation.clean,
         display_name: displayName,
         is_hidden: false,
         created_by: user.id,
@@ -4162,10 +4314,14 @@ export default function PeePooListWebsite() {
 
       if (error) throw error;
 
+      setLastChatSentAt(Date.now());
       await loadChatMessages();
       return true;
     } catch (error) {
-      setStatusMessage(`Could not send chat message: ${error.message}`);
+      const friendly = String(error.message || "").toLowerCase().includes("row-level security")
+        ? "Chat is rate-limited. Wait a few seconds and try again."
+        : error.message;
+      setStatusMessage(`Could not send chat message: ${friendly}`);
       return false;
     }
   }
@@ -4190,14 +4346,23 @@ export default function PeePooListWebsite() {
       return false;
     }
 
-    const cleanMessage = String(message || "").trim().slice(0, 280);
-    if (!cleanMessage) return false;
+    const cooldownLeft = cooldownSecondsLeft(lastLevelCommentSentAt);
+    if (cooldownLeft > 0) {
+      setStatusMessage(`Slow down a little. Comment again in ${cooldownLeft} second${cooldownLeft === 1 ? "" : "s"}.`);
+      return false;
+    }
+
+    const validation = validatePublicMessage(message);
+    if (!validation.ok) {
+      setStatusMessage(validation.message);
+      return false;
+    }
 
     try {
       const { error } = await supabase.from("level_comments").insert({
         level_id: level.id,
         list_type: listType,
-        message: cleanMessage,
+        message: validation.clean,
         display_name: profileLabel(profile, user),
         is_hidden: false,
         created_by: user.id,
@@ -4205,10 +4370,14 @@ export default function PeePooListWebsite() {
 
       if (error) throw error;
 
+      setLastLevelCommentSentAt(Date.now());
       await loadLevelComments();
       return true;
     } catch (error) {
-      setStatusMessage(`Could not post comment: ${error.message}`);
+      const friendly = String(error.message || "").toLowerCase().includes("row-level security")
+        ? "Comments are rate-limited. Wait a few seconds and try again."
+        : error.message;
+      setStatusMessage(`Could not post comment: ${friendly}`);
       return false;
     }
   }
@@ -4505,6 +4674,12 @@ export default function PeePooListWebsite() {
         approveStatusRequest={approveStatusRequest}
         denyStatusRequest={denyStatusRequest}
         isConfigured={isSupabaseConfigured}
+        levels={levels}
+        changelogEntries={changelogEntries}
+        chatMessages={chatMessages}
+        publicProfiles={publicProfiles}
+        userBadges={userBadges}
+        setTab={setTab}
       />
     );
   }, [tab, levels, isAdmin, user, profile, publicProfiles, userBadges, authEmail, authPassword, authMessage, requests, reports, userRequests, statusRequests, changelogEntries, chatMessages, levelComments, notifications, statusMessage]);
