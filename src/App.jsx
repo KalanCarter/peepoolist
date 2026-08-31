@@ -288,7 +288,7 @@ function SiteShell({ children, tab, setTab, isAdmin, user }) {
   );
 }
 
-function AuthBox({ user, isAdmin, signIn, signUp, signInWithGoogle, signInWithGithub, signOut, authEmail, setAuthEmail, authPassword, setAuthPassword, authMessage, isConfigured }) {
+function AuthBox({ user, isAdmin, signIn, signUp, signInWithGoogle, signInWithGithub, signOut, deleteAccount, authEmail, setAuthEmail, authPassword, setAuthPassword, authMessage, isConfigured }) {
   return (
     <Card className="rounded-[2rem] border-white/10 bg-slate-950/70 text-slate-100 shadow-2xl shadow-black/30">
       <CardContent className="space-y-4 p-6">
@@ -318,6 +318,9 @@ function AuthBox({ user, isAdmin, signIn, signUp, signInWithGoogle, signInWithGi
             </div>
             <Button onClick={signOut} variant="secondary" className="w-full rounded-2xl">
               <LogOut className="mr-2 h-4 w-4" /> Sign out
+            </Button>
+            <Button onClick={deleteAccount} variant="destructive" className="w-full rounded-2xl">
+              <Trash2 className="mr-2 h-4 w-4" /> Delete account
             </Button>
           </>
         ) : (
@@ -363,7 +366,7 @@ function AuthBox({ user, isAdmin, signIn, signUp, signInWithGoogle, signInWithGi
   );
 }
 
-function HomePage({ user, isAdmin, signIn, signUp, signInWithGoogle, signInWithGithub, signOut, authEmail, setAuthEmail, authPassword, setAuthPassword, authMessage, requestCount, isConfigured }) {
+function HomePage({ user, isAdmin, signIn, signUp, signInWithGoogle, signInWithGithub, signOut, deleteAccount, authEmail, setAuthEmail, authPassword, setAuthPassword, authMessage, requestCount, isConfigured }) {
   return (
     <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
       <section className="grid gap-6 md:grid-cols-[1.2fr_.8fr]">
@@ -385,6 +388,7 @@ function HomePage({ user, isAdmin, signIn, signUp, signInWithGoogle, signInWithG
           signInWithGoogle={signInWithGoogle}
           signInWithGithub={signInWithGithub}
           signOut={signOut}
+          deleteAccount={deleteAccount}
           authEmail={authEmail}
           setAuthEmail={setAuthEmail}
           authPassword={authPassword}
@@ -1209,6 +1213,52 @@ export default function PeePooListWebsite() {
     setAuthMessage("Signed out.");
   }
 
+  async function deleteAccount() {
+    if (!supabase || !user) return;
+
+    const confirmed = window.confirm("Delete your PeePooList account? This cannot be undone.");
+    if (!confirmed) return;
+
+    const doubleConfirmed = window.confirm("Are you completely sure? Your account will be permanently deleted.");
+    if (!doubleConfirmed) return;
+
+    try {
+      setAuthMessage("Deleting account...");
+
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
+      if (sessionError || !session?.access_token) {
+        setAuthMessage("You need to sign in again before deleting your account.");
+        return;
+      }
+
+      const response = await fetch("/api/delete-account", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setAuthMessage(result.message || "Could not delete account.");
+        return;
+      }
+
+      await supabase.auth.signOut();
+      setUser(null);
+      setProfile(null);
+      setRequests([]);
+      setAuthMessage("Account deleted.");
+    } catch (error) {
+      setAuthMessage(`Could not delete account: ${error.message}`);
+    }
+  }
+
   async function uploadThumbnail(file) {
     if (!supabase || !user) {
       setStatusMessage("Sign in before uploading thumbnails.");
@@ -1531,6 +1581,7 @@ export default function PeePooListWebsite() {
         signInWithGoogle={signInWithGoogle}
         signInWithGithub={signInWithGithub}
         signOut={signOut}
+        deleteAccount={deleteAccount}
         authEmail={authEmail}
         setAuthEmail={setAuthEmail}
         authPassword={authPassword}
