@@ -177,16 +177,100 @@ function levelDetailTab(levelId) {
   return `level:${String(levelId || "")}`;
 }
 
+function userProfileTab(handleOrUserId) {
+  return `user:${String(handleOrUserId || "")}`;
+}
+
+function normalizeHandle(value = "") {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, "")
+    .slice(0, 24);
+}
+
+function profileLabel(profile, user) {
+  const name = String(profile?.display_name || "").trim();
+  if (name) return name;
+  const handle = String(profile?.handle || "").trim();
+  if (handle) return `@${handle}`;
+  const email = String(user?.email || "").trim();
+  if (email) return email.split("@")[0];
+  return "PeePooList user";
+}
+
+function profileHandle(profile, user) {
+  const handle = String(profile?.handle || "").trim();
+  if (handle) return handle;
+  return String(user?.id || profile?.user_id || "").slice(0, 8);
+}
+
+function roleName(role) {
+  if (role === "admin") return "Admin";
+  if (role === "priority") return "Priority";
+  return "Viewer";
+}
+
+function roleBadgeClass(role) {
+  if (role === "admin") return "rounded-xl bg-emerald-500/20 text-emerald-200";
+  if (role === "priority") return "rounded-xl bg-fuchsia-500/20 text-fuchsia-200";
+  return "rounded-xl bg-slate-700 text-slate-200";
+}
+
+function badgeColorClass(color = "emerald") {
+  const colors = {
+    emerald: "border-emerald-300/30 bg-emerald-500/10 text-emerald-100",
+    yellow: "border-yellow-300/30 bg-yellow-300/10 text-yellow-100",
+    cyan: "border-cyan-300/30 bg-cyan-500/10 text-cyan-100",
+    purple: "border-fuchsia-300/30 bg-fuchsia-500/10 text-fuchsia-100",
+    red: "border-red-300/30 bg-red-500/10 text-red-100",
+    slate: "border-white/10 bg-white/[0.04] text-slate-100",
+  };
+  return colors[color] || colors.emerald;
+}
+
+function achievementList(profile, badges = []) {
+  const achievements = [
+    { key: "account", label: "Account Created", description: "Made a PeePooList account.", color: "cyan" },
+  ];
+
+  if (profile?.display_name || profile?.handle || profile?.bio) {
+    achievements.push({ key: "custom_profile", label: "Custom Profile", description: "Set up a username, handle, or bio.", color: "emerald" });
+  }
+
+  if (profile?.role === "priority") {
+    achievements.push({ key: "priority", label: "Priority Viewer", description: "Has priority request status.", color: "purple" });
+  }
+
+  if (profile?.role === "admin") {
+    achievements.push({ key: "admin", label: "Admin", description: "Can moderate and manage PeePooList.", color: "yellow" });
+  }
+
+  if ((badges || []).length > 0) {
+    achievements.push({ key: "badge_collector", label: "Badge Collector", description: "Has at least one custom badge.", color: "emerald" });
+  }
+
+  return achievements;
+}
+
 function initialTabFromHash() {
   if (typeof window === "undefined") return "home";
-  const match = window.location.hash.match(/^#\/level\/([^?#]+)/);
-  return match ? levelDetailTab(decodeURIComponent(match[1])) : "home";
+  const levelMatch = window.location.hash.match(/^#\/level\/([^?#]+)/);
+  if (levelMatch) return levelDetailTab(decodeURIComponent(levelMatch[1]));
+  const profileMatch = window.location.hash.match(/^#\/u\/([^?#]+)/);
+  if (profileMatch) return userProfileTab(decodeURIComponent(profileMatch[1]));
+  return "home";
 }
 
 function levelShareUrl(levelId) {
   if (typeof window === "undefined") return "";
   const path = `${window.location.origin}${window.location.pathname}`;
   return `${path}#/level/${encodeURIComponent(String(levelId || ""))}`;
+}
+
+function profileShareUrl(handleOrUserId) {
+  if (typeof window === "undefined") return "";
+  const path = `${window.location.origin}${window.location.pathname}`;
+  return `${path}#/u/${encodeURIComponent(String(handleOrUserId || ""))}`;
 }
 
 function imageFor(level, index, listType) {
@@ -627,7 +711,93 @@ function StatusRequestPanel({ onCancel, onSubmitStatusRequest }) {
   );
 }
 
-function ProfileMenu({ user, isAdmin, profile, onSignOut, onDeleteAccount, onChangeEmail, onChangePassword, onSubmitStatusRequest }) {
+function PublicProfilePanel({ user, profile, onCancel, onUpdateProfile }) {
+  const [displayName, setDisplayName] = useState(profile?.display_name || "");
+  const [handle, setHandle] = useState(profile?.handle || "");
+  const [bio, setBio] = useState(profile?.bio || "");
+  const [isSaving, setIsSaving] = useState(false);
+  const [message, setMessage] = useState("");
+
+  async function submit(event) {
+    event.preventDefault();
+    setIsSaving(true);
+    const result = await onUpdateProfile({
+      display_name: displayName,
+      handle,
+      bio,
+    });
+    setIsSaving(false);
+
+    if (result?.error) {
+      setMessage(result.error);
+      return;
+    }
+
+    setMessage("Profile saved.");
+    window.setTimeout(() => onCancel(), 900);
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 14, scale: 0.98 }}
+      animate={{ opacity: 1, x: 0, scale: 1 }}
+      exit={{ opacity: 0, x: 14, scale: 0.98 }}
+      className="absolute right-[17rem] top-12 z-50 w-[390px] rounded-[2rem] border border-white/10 bg-slate-950/95 p-5 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl max-md:right-0 max-md:top-[21rem]"
+    >
+      <h3 className="text-xl font-black">Edit public profile</h3>
+      <p className="mt-1 text-xs text-slate-400">This is what other visitors can see on your PeePooList profile.</p>
+
+      <form onSubmit={submit} className="mt-4 space-y-4">
+        <div>
+          <label className="mb-2 block text-sm font-bold text-slate-200">Username</label>
+          <Input
+            value={displayName}
+            maxLength={40}
+            onChange={(event) => setDisplayName(event.target.value)}
+            placeholder={user?.email?.split("@")[0] || "PeePooList user"}
+            className="rounded-2xl border-white/10 bg-white/10"
+          />
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-bold text-slate-200">Handle</label>
+          <div className="flex items-center overflow-hidden rounded-2xl border border-white/10 bg-white/10">
+            <span className="px-3 text-slate-400">@</span>
+            <input
+              value={handle}
+              maxLength={24}
+              onChange={(event) => setHandle(normalizeHandle(event.target.value))}
+              placeholder="your_handle"
+              className="h-10 flex-1 bg-transparent px-1 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none"
+            />
+          </div>
+          <p className="mt-1 text-xs text-slate-500">3–24 characters. Lowercase letters, numbers, and underscores only.</p>
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-bold text-slate-200">Bio</label>
+          <Textarea
+            value={bio}
+            maxLength={240}
+            onChange={(event) => setBio(event.target.value)}
+            placeholder="Write a tiny bio..."
+            className="min-h-24 resize-y rounded-2xl border-white/10 bg-white/10"
+          />
+          <p className="mt-1 text-xs text-slate-500">{bio.length}/240</p>
+        </div>
+
+        {message && <p className={cn("text-xs font-bold", message.includes("saved") ? "text-emerald-300" : "text-red-300")}>{message}</p>}
+
+        <div className="flex justify-between gap-3">
+          <Button variant="secondary" onClick={onCancel} className="rounded-2xl">Cancel</Button>
+          <Button type="submit" disabled={isSaving} className="rounded-2xl">{isSaving ? "Saving..." : "Save profile"}</Button>
+        </div>
+      </form>
+    </motion.div>
+  );
+}
+
+function ProfileMenu({ user, isAdmin, profile, onSignOut, onDeleteAccount, onChangeEmail, onChangePassword, onSubmitStatusRequest, onUpdateProfile, onOpenProfile }) {
   const [open, setOpen] = useState(false);
   const [activePanel, setActivePanel] = useState("");
 
@@ -660,10 +830,18 @@ function ProfileMenu({ user, isAdmin, profile, onSignOut, onDeleteAccount, onCha
             {user ? (
               <>
                 <div className="mb-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
-                  <p className="break-all text-sm font-bold text-white">{user.email}</p>
-                  <p className="mt-1 text-xs text-slate-400">Status: {isAdmin ? "Admin" : profile?.role === "priority" ? "Priority" : "Viewer"}</p>
+                  <p className="break-words text-sm font-bold text-white">{profileLabel(profile, user)}</p>
+                  <p className="mt-1 text-xs text-emerald-200">@{profileHandle(profile, user)}</p>
+                  <p className="mt-1 break-all text-[11px] text-slate-500">{user.email}</p>
+                  <p className="mt-1 text-xs text-slate-400">Status: {roleName(profile?.role)}</p>
                 </div>
                 <div className="grid gap-2">
+                  <Button variant="secondary" onClick={onOpenProfile} className="justify-start rounded-2xl">
+                    <UserCircle className="mr-2 h-4 w-4" /> View Profile
+                  </Button>
+                  <Button variant="secondary" onClick={() => setActivePanel("public-profile")} className="justify-start rounded-2xl">
+                    <Pencil className="mr-2 h-4 w-4" /> Edit Profile
+                  </Button>
                   <Button variant="secondary" onClick={() => setActivePanel("email")} className="justify-start rounded-2xl">
                     <Mail className="mr-2 h-4 w-4" /> Change Email
                   </Button>
@@ -687,6 +865,10 @@ function ProfileMenu({ user, isAdmin, profile, onSignOut, onDeleteAccount, onCha
               </div>
             )}
           </motion.div>
+        )}
+
+        {open && activePanel === "public-profile" && user && (
+          <PublicProfilePanel user={user} profile={profile} onCancel={closeSidePanel} onUpdateProfile={onUpdateProfile} />
         )}
 
         {open && activePanel === "email" && user && (
@@ -862,7 +1044,7 @@ function StatusRequestsPanel({ statusRequests, onApprove, onDeny }) {
   );
 }
 
-function SiteShell({ children, tab, setTab, isAdmin, user, profile, signOut, deleteAccount, changeEmail, changePassword, submitStatusRequest, requests, statusRequests, reports, notifications, markNotificationsRead }) {
+function SiteShell({ children, tab, setTab, isAdmin, user, profile, signOut, deleteAccount, changeEmail, changePassword, submitStatusRequest, updateProfile, requests, statusRequests, reports, notifications, markNotificationsRead }) {
   return (
     <div className="min-h-screen bg-[#090d18] text-slate-100 selection:bg-yellow-300 selection:text-black">
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
@@ -921,6 +1103,8 @@ function SiteShell({ children, tab, setTab, isAdmin, user, profile, signOut, del
               onChangeEmail={changeEmail}
               onChangePassword={changePassword}
               onSubmitStatusRequest={submitStatusRequest}
+              onUpdateProfile={updateProfile}
+              onOpenProfile={() => setTab(userProfileTab(profile?.handle || user?.id))}
             />
           </nav>
         </div>
@@ -1311,6 +1495,147 @@ function MyRequestsPage({ requests, user, setTab }) {
   );
 }
 
+
+
+function UserProfilePage({ profile, badges, viewer, isAdmin, onBack, onAwardBadge, onDeleteBadge }) {
+  const [badgeForm, setBadgeForm] = useState({ label: "", description: "", color: "emerald" });
+  const [isSavingBadge, setIsSavingBadge] = useState(false);
+  const [message, setMessage] = useState("");
+  const userBadges = badges || [];
+  const achievements = achievementList(profile, userBadges);
+  const isOwnProfile = viewer?.id === profile?.user_id;
+  const shareUrl = profileShareUrl(profile?.handle || profile?.user_id);
+
+  async function copyProfileLink() {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setMessage("Profile link copied.");
+    } catch {
+      setMessage(shareUrl);
+    }
+  }
+
+  async function submitBadge(event) {
+    event.preventDefault();
+    if (!isAdmin || !badgeForm.label.trim()) return;
+    setIsSavingBadge(true);
+    const result = await onAwardBadge(profile.user_id, badgeForm);
+    setIsSavingBadge(false);
+
+    if (result?.error) {
+      setMessage(result.error);
+      return;
+    }
+
+    setBadgeForm({ label: "", description: "", color: "emerald" });
+    setMessage("Badge awarded.");
+  }
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+      <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950/50 shadow-2xl shadow-black/25">
+        <div className="p-6 md:p-8">
+          <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-4">
+              <div className="grid h-20 w-20 shrink-0 place-items-center rounded-[1.7rem] border border-white/10 bg-[#c0ffbf] text-3xl font-black text-white shadow-xl shadow-black/30" style={{ textShadow: "1px 1px 0 #000, -1px 1px 0 #000, 1px -1px 0 #000, -1px -1px 0 #000" }}>
+                {String(profileLabel(profile)).slice(0, 1).toUpperCase()}
+              </div>
+              <div>
+                <div className="mb-2 flex flex-wrap gap-2">
+                  <Badge className={roleBadgeClass(profile?.role)}>{roleName(profile?.role)}</Badge>
+                  {isOwnProfile && <Badge className="rounded-xl bg-blue-500/20 text-blue-200">You</Badge>}
+                </div>
+                <h2 className="break-words text-4xl font-black tracking-tight md:text-6xl">{profileLabel(profile)}</h2>
+                <p className="mt-2 text-lg font-bold text-emerald-200">@{profileHandle(profile)}</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={copyProfileLink} variant="secondary" className="rounded-2xl">Copy profile link</Button>
+              <Button onClick={onBack} variant="secondary" className="rounded-2xl">Back</Button>
+            </div>
+          </div>
+
+          <div className="mt-6 rounded-[1.5rem] border border-white/10 bg-black/20 p-5">
+            <h3 className="text-sm font-black uppercase tracking-[0.2em] text-slate-500">Bio</h3>
+            <p className="mt-2 whitespace-pre-wrap text-slate-200">{profile?.bio?.trim() || "This user has not written a bio yet."}</p>
+          </div>
+
+          {message && <p className="mt-4 text-sm font-bold text-emerald-200">{message}</p>}
+        </div>
+      </section>
+
+      <section className="grid gap-5 lg:grid-cols-2">
+        <Card className="rounded-[2rem] border-white/10 bg-slate-950/80 text-slate-100 shadow-2xl shadow-black/30">
+          <CardContent className="p-6">
+            <h3 className="text-2xl font-black">Badges</h3>
+            <p className="mt-1 text-sm text-slate-400">Custom badges awarded by admins.</p>
+
+            {userBadges.length === 0 ? (
+              <div className="mt-5 rounded-2xl border border-dashed border-white/15 p-8 text-center text-slate-500">No custom badges yet.</div>
+            ) : (
+              <div className="mt-5 grid gap-3">
+                {userBadges.map((badge) => (
+                  <div key={badge.id} className={cn("rounded-2xl border p-4", badgeColorClass(badge.badge_color))}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <h4 className="text-lg font-black">{badge.badge_label}</h4>
+                        {badge.badge_description && <p className="mt-1 text-sm opacity-80">{badge.badge_description}</p>}
+                        <p className="mt-2 text-xs opacity-60">Awarded {formatDateTime(badge.awarded_at)}</p>
+                      </div>
+                      {isAdmin && (
+                        <button onClick={() => onDeleteBadge(badge.id)} className="rounded-xl bg-black/25 px-3 py-1 text-xs font-bold text-white hover:bg-black/40">
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-[2rem] border-white/10 bg-slate-950/80 text-slate-100 shadow-2xl shadow-black/30">
+          <CardContent className="p-6">
+            <h3 className="text-2xl font-black">Achievements</h3>
+            <p className="mt-1 text-sm text-slate-400">Automatic profile milestones.</p>
+            <div className="mt-5 grid gap-3">
+              {achievements.map((achievement) => (
+                <div key={achievement.key} className={cn("rounded-2xl border p-4", badgeColorClass(achievement.color))}>
+                  <h4 className="text-lg font-black">{achievement.label}</h4>
+                  <p className="mt-1 text-sm opacity-80">{achievement.description}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      {isAdmin && (
+        <Card className="rounded-[2rem] border-yellow-300/30 bg-yellow-300/10 text-yellow-50 shadow-2xl shadow-black/30">
+          <CardContent className="p-6">
+            <h3 className="text-2xl font-black">Award a badge</h3>
+            <form onSubmit={submitBadge} className="mt-4 grid gap-3 md:grid-cols-[1fr_1fr_160px_auto]">
+              <Input value={badgeForm.label} onChange={(event) => setBadgeForm((current) => ({ ...current, label: event.target.value }))} placeholder="Badge name" className="rounded-2xl border-white/10 bg-black/20" />
+              <Input value={badgeForm.description} onChange={(event) => setBadgeForm((current) => ({ ...current, description: event.target.value }))} placeholder="Description" className="rounded-2xl border-white/10 bg-black/20" />
+              <select value={badgeForm.color} onChange={(event) => setBadgeForm((current) => ({ ...current, color: event.target.value }))} className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none">
+                <option value="emerald" className="bg-slate-900">Green</option>
+                <option value="yellow" className="bg-slate-900">Yellow</option>
+                <option value="cyan" className="bg-slate-900">Cyan</option>
+                <option value="purple" className="bg-slate-900">Purple</option>
+                <option value="red" className="bg-slate-900">Red</option>
+                <option value="slate" className="bg-slate-900">Slate</option>
+              </select>
+              <Button type="submit" disabled={isSavingBadge || !badgeForm.label.trim()} className="rounded-2xl">
+                {isSavingBadge ? "Awarding..." : "Award"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      )}
+    </motion.div>
+  );
+}
 
 function ReportLevelPanel({ level, user, onSubmit, onCancel }) {
   const [reasonType, setReasonType] = useState("broken_link");
@@ -2433,7 +2758,10 @@ export default function PeePooListWebsite() {
       if (safeTab.startsWith("level:")) {
         const levelId = safeTab.slice("level:".length);
         window.history.replaceState({}, document.title, `${basePath}#/level/${encodeURIComponent(levelId)}`);
-      } else if (window.location.hash.startsWith("#/level/")) {
+      } else if (safeTab.startsWith("user:")) {
+        const profileId = safeTab.slice("user:".length);
+        window.history.replaceState({}, document.title, `${basePath}#/u/${encodeURIComponent(profileId)}`);
+      } else if (window.location.hash.startsWith("#/level/") || window.location.hash.startsWith("#/u/")) {
         window.history.replaceState({}, document.title, basePath);
       }
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -2453,6 +2781,8 @@ export default function PeePooListWebsite() {
   const [changelogEntries, setChangelogEntries] = useState([]);
   const [chatMessages, setChatMessages] = useState([]);
   const [notifications, setNotifications] = useState([]);
+  const [publicProfiles, setPublicProfiles] = useState([]);
+  const [userBadges, setUserBadges] = useState([]);
 
   const isAdmin = profile?.role === "admin";
   const isPriority = profile?.role === "priority";
@@ -2463,7 +2793,7 @@ export default function PeePooListWebsite() {
       return;
     }
 
-    const { data, error } = await supabase.from("profiles").select("role").eq("user_id", nextUser.id).maybeSingle();
+    const { data, error } = await supabase.from("profiles").select("user_id, role, display_name, handle, bio").eq("user_id", nextUser.id).maybeSingle();
 
     if (error) {
       setProfile({ role: "user" });
@@ -2608,10 +2938,42 @@ export default function PeePooListWebsite() {
     setUserRequests(data || []);
   }
 
+  async function loadPublicProfiles() {
+    if (!supabase) return;
+
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("user_id, role, display_name, handle, bio, updated_at")
+      .order("handle", { ascending: true, nullsFirst: false });
+
+    if (error) {
+      setStatusMessage(`Could not load profiles: ${error.message}`);
+      return;
+    }
+
+    setPublicProfiles(data || []);
+  }
+
+  async function loadUserBadges() {
+    if (!supabase) return;
+
+    const { data, error } = await supabase
+      .from("user_badges")
+      .select("*")
+      .order("awarded_at", { ascending: false });
+
+    if (error) {
+      setStatusMessage(`Could not load badges: ${error.message}`);
+      return;
+    }
+
+    setUserBadges(data || []);
+  }
+
   useEffect(() => {
     function handleHashChange() {
       const nextTab = initialTabFromHash();
-      if (nextTab.startsWith("level:")) setTabState(nextTab);
+      if (nextTab.startsWith("level:") || nextTab.startsWith("user:")) setTabState(nextTab);
     }
 
     window.addEventListener("hashchange", handleHashChange);
@@ -2650,6 +3012,8 @@ export default function PeePooListWebsite() {
       await loadUserRequests(nextUser);
       await loadChangelogEntries();
       await loadChatMessages();
+      await loadPublicProfiles();
+      await loadUserBadges();
     }
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -2664,6 +3028,8 @@ export default function PeePooListWebsite() {
     loadLevels();
     loadChangelogEntries();
     loadChatMessages();
+    loadPublicProfiles();
+    loadUserBadges();
 
     return () => listener.subscription.unsubscribe();
   }, []);
@@ -2827,6 +3193,67 @@ export default function PeePooListWebsite() {
 
     setStatusMessage("Password changed.");
     return { ok: true };
+  }
+
+  async function updateProfile(form) {
+    if (!supabase || !user) return { error: "Sign in before editing your profile." };
+
+    const cleanHandle = normalizeHandle(form.handle || "");
+    if (cleanHandle.length < 3) return { error: "Handle must be at least 3 characters." };
+
+    try {
+      const { error } = await supabase.rpc("update_my_profile", {
+        p_display_name: String(form.display_name || "").trim().slice(0, 40),
+        p_handle: cleanHandle,
+        p_bio: String(form.bio || "").trim().slice(0, 240),
+      });
+
+      if (error) throw error;
+
+      await loadProfile(user);
+      await loadPublicProfiles();
+      setStatusMessage("Profile updated.");
+      return { ok: true };
+    } catch (error) {
+      setStatusMessage(`Could not update profile: ${error.message}`);
+      return { error: error.message };
+    }
+  }
+
+  async function awardBadge(profileUserId, badge) {
+    if (!supabase || !isAdmin) return { error: "Admin access required." };
+    if (!profileUserId || !badge?.label?.trim()) return { error: "Badge name is required." };
+
+    try {
+      const { error } = await supabase.from("user_badges").insert({
+        user_id: profileUserId,
+        badge_key: normalizeHandle(badge.label || "badge") || "badge",
+        badge_label: String(badge.label || "Badge").trim().slice(0, 40),
+        badge_description: String(badge.description || "").trim().slice(0, 140) || null,
+        badge_color: badge.color || "emerald",
+        awarded_by: user?.id || null,
+      });
+
+      if (error) throw error;
+      await loadUserBadges();
+      return { ok: true };
+    } catch (error) {
+      setStatusMessage(`Could not award badge: ${error.message}`);
+      return { error: error.message };
+    }
+  }
+
+  async function deleteBadge(badgeId) {
+    if (!supabase || !isAdmin || !badgeId) return;
+
+    try {
+      const { error } = await supabase.from("user_badges").delete().eq("id", badgeId);
+      if (error) throw error;
+      await loadUserBadges();
+      setStatusMessage("Badge removed.");
+    } catch (error) {
+      setStatusMessage(`Could not remove badge: ${error.message}`);
+    }
   }
 
   async function submitStatusRequest(form) {
@@ -3392,6 +3819,33 @@ export default function PeePooListWebsite() {
       );
     }
 
+    if (tab.startsWith("user:")) {
+      const profileId = decodeURIComponent(tab.slice("user:".length));
+      const cleanProfileId = normalizeHandle(profileId);
+      const match = publicProfiles.find((item) => String(item.user_id) === profileId || String(item.handle || "") === cleanProfileId);
+
+      if (match) {
+        return (
+          <UserProfilePage
+            profile={match}
+            badges={userBadges.filter((badge) => String(badge.user_id) === String(match.user_id))}
+            viewer={user}
+            isAdmin={isAdmin}
+            onBack={() => setTab("home")}
+            onAwardBadge={awardBadge}
+            onDeleteBadge={deleteBadge}
+          />
+        );
+      }
+
+      return (
+        <InfoPageShell title="Profile not found" eyebrow="Missing user">
+          <p>The profile could not be found. The handle might have changed.</p>
+          <Button onClick={() => setTab("home")} className="rounded-2xl">Back home</Button>
+        </InfoPageShell>
+      );
+    }
+
     if (tab === "about") return <AboutPage />;
     if (tab === "rules") return <RulesPage />;
     if (tab === "privacy") return <PrivacyPolicyPage />;
@@ -3485,7 +3939,7 @@ export default function PeePooListWebsite() {
         isConfigured={isSupabaseConfigured}
       />
     );
-  }, [tab, levels, isAdmin, user, profile, authEmail, authPassword, authMessage, requests, reports, userRequests, statusRequests, changelogEntries, chatMessages, notifications, statusMessage]);
+  }, [tab, levels, isAdmin, user, profile, publicProfiles, userBadges, authEmail, authPassword, authMessage, requests, reports, userRequests, statusRequests, changelogEntries, chatMessages, notifications, statusMessage]);
 
   return (
     <SiteShell
@@ -3499,6 +3953,7 @@ export default function PeePooListWebsite() {
       changeEmail={changeEmail}
       changePassword={changePassword}
       submitStatusRequest={submitStatusRequest}
+      updateProfile={updateProfile}
       requests={requests}
       statusRequests={statusRequests}
       reports={reports}
