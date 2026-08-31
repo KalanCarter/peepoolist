@@ -340,9 +340,6 @@ function AuthBox({ user, isAdmin, signIn, signUp, signInWithGoogle, signInWithGi
             <Button onClick={deleteAccount} variant="destructive" className="w-full rounded-2xl">
               <Trash2 className="mr-2 h-4 w-4" /> Delete account
             </Button>
-            <Button onClick={deleteAccount} variant="destructive" className="w-full rounded-2xl">
-              <Trash2 className="mr-2 h-4 w-4" /> Delete account
-            </Button>
           </>
         ) : (
           <>
