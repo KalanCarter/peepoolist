@@ -278,6 +278,18 @@ function readableStatus(status) {
   return "Viewer";
 }
 
+function formatDateTime(value) {
+  if (!value) return "Unknown time";
+  try {
+    return new Intl.DateTimeFormat(undefined, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date(value));
+  } catch {
+    return String(value);
+  }
+}
+
 function ChangeEmailPanel({ user, onCancel, onChangeEmail }) {
   const [step, setStep] = useState(0);
   const [newEmail, setNewEmail] = useState("");
@@ -677,7 +689,7 @@ function ProfileMenu({ user, isAdmin, profile, onSignOut, onDeleteAccount, onCha
   );
 }
 
-function NotificationsMenu({ user, isAdmin, requests, statusRequests, notifications, onMarkNotificationsRead }) {
+function NotificationsMenu({ user, isAdmin, requests, statusRequests, reports, notifications, onMarkNotificationsRead }) {
   const [open, setOpen] = useState(false);
 
   const adminItems = [
@@ -690,6 +702,11 @@ function NotificationsMenu({ user, isAdmin, requests, statusRequests, notificati
       id: `status-${request.id}`,
       title: "New status request",
       message: `${request.requester_email || "Someone"} requested ${readableStatus(request.requested_status)} status.`,
+    })),
+    ...(reports || []).filter((report) => report.status === "pending").map((report) => ({
+      id: `report-${report.id}`,
+      title: "New report",
+      message: `${report.reporter_email || "Someone"} reported ${report.level_name || "a level"} for ${String(report.reason_type || "other").replaceAll("_", " ")}.`,
     })),
   ];
 
@@ -829,7 +846,7 @@ function StatusRequestsPanel({ statusRequests, onApprove, onDeny }) {
   );
 }
 
-function SiteShell({ children, tab, setTab, isAdmin, user, profile, signOut, deleteAccount, changeEmail, changePassword, submitStatusRequest, requests, statusRequests, notifications, markNotificationsRead }) {
+function SiteShell({ children, tab, setTab, isAdmin, user, profile, signOut, deleteAccount, changeEmail, changePassword, submitStatusRequest, requests, statusRequests, reports, notifications, markNotificationsRead }) {
   return (
     <div className="min-h-screen bg-[#090d18] text-slate-100 selection:bg-yellow-300 selection:text-black">
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
@@ -862,6 +879,9 @@ function SiteShell({ children, tab, setTab, isAdmin, user, profile, signOut, del
             <Button variant={tab === "rules" ? "default" : "secondary"} onClick={() => setTab("rules")} className="rounded-2xl">
               Rules
             </Button>
+            <Button variant={tab === "changelog" ? "default" : "secondary"} onClick={() => setTab("changelog")} className="rounded-2xl">
+              Changelog
+            </Button>
             {user && (
               <Button variant={tab === "my-requests" ? "default" : "secondary"} onClick={() => setTab("my-requests")} className="rounded-2xl">
                 My Requests
@@ -872,6 +892,7 @@ function SiteShell({ children, tab, setTab, isAdmin, user, profile, signOut, del
               isAdmin={isAdmin}
               requests={requests}
               statusRequests={statusRequests}
+              reports={reports}
               notifications={notifications}
               onMarkNotificationsRead={markNotificationsRead}
             />
@@ -899,6 +920,10 @@ function SiteShell({ children, tab, setTab, isAdmin, user, profile, signOut, del
           <span className="text-slate-700">•</span>
           <button onClick={() => setTab("rules")} className="font-semibold text-slate-200 hover:text-white">
             Rules
+          </button>
+          <span className="text-slate-700">•</span>
+          <button onClick={() => setTab("changelog")} className="font-semibold text-slate-200 hover:text-white">
+            Changelog
           </button>
           <span className="text-slate-700">•</span>
           <button onClick={() => setTab("privacy")} className="font-semibold text-slate-200 hover:text-white">
@@ -1269,7 +1294,272 @@ function MyRequestsPage({ requests, user, setTab }) {
   );
 }
 
-function LevelCard({ level, index, listType, removeMode, onRemove, reorderMode, draggable, isDragging, onDragStart, onDragOver, onDrop, onDragEnd }) {
+
+function ReportLevelPanel({ level, user, onSubmit, onCancel }) {
+  const [reasonType, setReasonType] = useState("broken_link");
+  const [details, setDetails] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function submit(event) {
+    event.preventDefault();
+    if (!user) return;
+    setIsSubmitting(true);
+    await onSubmit(level, reasonType, details);
+    setIsSubmitting(false);
+    onCancel();
+  }
+
+  return (
+    <Card className="mx-auto max-w-[800px] rounded-[2rem] border-red-400/30 bg-red-950/40 text-slate-100 shadow-2xl shadow-black/30">
+      <CardContent className="space-y-4 p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="text-2xl font-black">Report {level?.name || "level"}</h3>
+            <p className="mt-1 text-sm text-slate-300">Reports go to admins for review. Use this for broken links, bad thumbnails, wrong info, or unsafe content.</p>
+          </div>
+          <Button onClick={onCancel} variant="secondary" className="rounded-2xl">Close</Button>
+        </div>
+
+        {!user && (
+          <div className="rounded-2xl border border-amber-300/30 bg-amber-300/10 p-4 text-sm text-amber-100">
+            Sign in before reporting a level.
+          </div>
+        )}
+
+        <form onSubmit={submit} className="space-y-4">
+          <div>
+            <label className="mb-2 block text-sm font-semibold text-slate-300">Reason</label>
+            <select
+              value={reasonType}
+              onChange={(event) => setReasonType(event.target.value)}
+              className="w-full rounded-2xl border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+            >
+              <option value="bad_thumbnail" className="bg-slate-900">Bad thumbnail</option>
+              <option value="broken_link" className="bg-slate-900">Broken link</option>
+              <option value="wrong_info" className="bg-slate-900">Wrong information</option>
+              <option value="inappropriate_content" className="bg-slate-900">Inappropriate content</option>
+              <option value="spam" className="bg-slate-900">Spam</option>
+              <option value="other" className="bg-slate-900">Other</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-semibold text-slate-300">Details</label>
+            <Textarea
+              value={details}
+              onChange={(event) => setDetails(event.target.value.slice(0, 1000))}
+              placeholder="Explain what is wrong..."
+              className="min-h-28 rounded-2xl border-white/10 bg-white/10"
+            />
+            <p className="mt-1 text-xs text-slate-500">{details.length}/1000</p>
+          </div>
+
+          <Button type="submit" disabled={!user || isSubmitting} variant="destructive" className="w-full rounded-2xl">
+            <AlertTriangle className="mr-2 h-4 w-4" />
+            {isSubmitting ? "Submitting report..." : "Submit report"}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ReportsPanel({ reports, onResolve, onDismiss }) {
+  return (
+    <Card className="rounded-[2rem] border-white/10 bg-slate-950/95 text-slate-100 shadow-2xl shadow-black/30">
+      <CardContent className="p-6">
+        <div className="mb-5 flex items-center gap-3">
+          <AlertTriangle className="h-6 w-6 text-red-300" />
+          <div>
+            <h3 className="text-2xl font-black">Level reports</h3>
+            <p className="text-sm text-slate-400">Resolve reports after fixing the problem, or dismiss reports that are not valid.</p>
+          </div>
+        </div>
+
+        {reports.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-white/15 p-8 text-center text-slate-400">No pending reports.</div>
+        ) : (
+          <div className="space-y-3">
+            {reports.map((report) => (
+              <div key={report.id} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge className="rounded-xl bg-red-500/20 text-red-200">{String(report.reason_type || "other").replaceAll("_", " ").toUpperCase()}</Badge>
+                      <Badge className="rounded-xl bg-white/10 text-white">{report.list_type === "pooplist" ? "Pooplist" : "Peelist"}</Badge>
+                    </div>
+                    <h4 className="mt-2 text-xl font-black">{report.level_name || "Unnamed level"}</h4>
+                    <p className="text-sm text-slate-400">Reporter: {report.reporter_email || "Unknown"} · {formatDateTime(report.created_at)}</p>
+                    {report.details && <p className="mt-2 whitespace-pre-wrap text-sm text-slate-300">“{report.details}”</p>}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button onClick={() => onResolve(report)} className="rounded-2xl bg-emerald-600 hover:bg-emerald-500"><Check className="mr-2 h-4 w-4" />Resolved</Button>
+                    <Button onClick={() => onDismiss(report)} variant="secondary" className="rounded-2xl"><X className="mr-2 h-4 w-4" />Dismiss</Button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ChangelogPage({ entries, chatMessages, user, isAdmin, onAddEntry, onDeleteEntry, onSendChatMessage, onHideChatMessage }) {
+  const [entryForm, setEntryForm] = useState({ kind: "update", title: "", body: "" });
+  const [chatText, setChatText] = useState("");
+  const [isPostingEntry, setIsPostingEntry] = useState(false);
+  const [isPostingChat, setIsPostingChat] = useState(false);
+
+  async function submitEntry(event) {
+    event.preventDefault();
+    if (!isAdmin || !entryForm.title.trim()) return;
+    setIsPostingEntry(true);
+    const ok = await onAddEntry(entryForm);
+    setIsPostingEntry(false);
+    if (ok) setEntryForm({ kind: "update", title: "", body: "" });
+  }
+
+  async function submitChat(event) {
+    event.preventDefault();
+    if (!user || !chatText.trim()) return;
+    setIsPostingChat(true);
+    const ok = await onSendChatMessage(chatText);
+    setIsPostingChat(false);
+    if (ok) setChatText("");
+  }
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+      <section className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-6 shadow-2xl shadow-black/20 md:p-8">
+        <Badge className="mb-4 rounded-xl bg-cyan-500/20 text-cyan-200">Updates and chat</Badge>
+        <h2 className="text-5xl font-black tracking-tight md:text-7xl">Changelog</h2>
+        <p className="mt-3 max-w-2xl text-slate-300">Public updates for site changes, list changes, and a simple signed-in public chat.</p>
+      </section>
+
+      {isAdmin && (
+        <Card className="rounded-[2rem] border-white/10 bg-slate-950/90 text-slate-100 shadow-2xl shadow-black/30">
+          <CardContent className="p-6">
+            <h3 className="text-2xl font-black">Post changelog entry</h3>
+            <form onSubmit={submitEntry} className="mt-4 grid gap-3">
+              <select
+                value={entryForm.kind}
+                onChange={(event) => setEntryForm((current) => ({ ...current, kind: event.target.value }))}
+                className="w-full rounded-2xl border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+              >
+                <option value="update" className="bg-slate-900">Site update</option>
+                <option value="level" className="bg-slate-900">List change</option>
+                <option value="announcement" className="bg-slate-900">Announcement</option>
+              </select>
+              <Input
+                value={entryForm.title}
+                onChange={(event) => setEntryForm((current) => ({ ...current, title: event.target.value }))}
+                placeholder="Title"
+                className="rounded-2xl border-white/10 bg-white/10"
+              />
+              <Textarea
+                value={entryForm.body}
+                onChange={(event) => setEntryForm((current) => ({ ...current, body: event.target.value }))}
+                placeholder="What changed?"
+                className="min-h-24 rounded-2xl border-white/10 bg-white/10"
+              />
+              <Button type="submit" disabled={isPostingEntry || !entryForm.title.trim()} className="rounded-2xl">
+                <Plus className="mr-2 h-4 w-4" />
+                {isPostingEntry ? "Posting..." : "Post update"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      )}
+
+      <section className="grid gap-6 lg:grid-cols-[1.05fr_.95fr]">
+        <Card className="rounded-[2rem] border-white/10 bg-slate-950/80 text-slate-100 shadow-2xl shadow-black/30">
+          <CardContent className="p-6">
+            <h3 className="mb-4 text-2xl font-black">Recent changes</h3>
+            {entries.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-white/15 p-8 text-center text-slate-400">No changelog entries yet.</div>
+            ) : (
+              <div className="space-y-3">
+                {entries.map((entry) => (
+                  <article key={entry.id} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <Badge className="rounded-xl bg-cyan-500/20 text-cyan-200">{String(entry.kind || "update").toUpperCase()}</Badge>
+                        <h4 className="mt-2 text-xl font-black">{entry.title}</h4>
+                        <p className="mt-1 text-xs text-slate-500">{formatDateTime(entry.created_at)}</p>
+                      </div>
+                      {isAdmin && (
+                        <Button onClick={() => onDeleteEntry(entry)} variant="destructive" className="rounded-2xl px-3">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                    {entry.body && <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-300">{entry.body}</p>}
+                  </article>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-[2rem] border-white/10 bg-slate-950/80 text-slate-100 shadow-2xl shadow-black/30">
+          <CardContent className="p-6">
+            <h3 className="text-2xl font-black">Public chat</h3>
+            <p className="mt-1 text-sm text-slate-400">Keep it clean. Admins can remove messages.</p>
+
+            {user ? (
+              <form onSubmit={submitChat} className="mt-4 space-y-3">
+                <Textarea
+                  value={chatText}
+                  onChange={(event) => setChatText(event.target.value.slice(0, 280))}
+                  placeholder="Say something..."
+                  className="min-h-20 rounded-2xl border-white/10 bg-white/10"
+                />
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs text-slate-500">{chatText.length}/280</p>
+                  <Button type="submit" disabled={isPostingChat || !chatText.trim()} className="rounded-2xl">
+                    <Send className="mr-2 h-4 w-4" />
+                    {isPostingChat ? "Posting..." : "Send"}
+                  </Button>
+                </div>
+              </form>
+            ) : (
+              <div className="mt-4 rounded-2xl border border-amber-300/30 bg-amber-300/10 p-4 text-sm text-amber-100">
+                Sign in to chat.
+              </div>
+            )}
+
+            <div className="mt-5 max-h-[560px] space-y-3 overflow-y-auto pr-1">
+              {chatMessages.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-white/15 p-8 text-center text-slate-400">No chat messages yet.</div>
+              ) : (
+                chatMessages.map((message) => (
+                  <div key={message.id} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-black text-white">{message.display_name || "PeePooList user"}</p>
+                        <p className="text-xs text-slate-500">{formatDateTime(message.created_at)}</p>
+                      </div>
+                      {isAdmin && (
+                        <Button onClick={() => onHideChatMessage(message)} variant="destructive" className="rounded-2xl px-3">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                    <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-300">{message.message}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+    </motion.div>
+  );
+}
+
+function LevelCard({ level, index, listType, removeMode, onRemove, onReport, reorderMode, draggable, isDragging, onDragStart, onDragOver, onDrop, onDragEnd }) {
   const colors = listType === "pooplist" ? "from-amber-950/80 to-slate-900" : "from-yellow-950/70 to-slate-900";
 
   return (
@@ -1349,6 +1639,17 @@ function LevelCard({ level, index, listType, removeMode, onRemove, reorderMode, 
           <Badge className="rounded-xl bg-cyan-500/20 text-cyan-200">Creator: {level.creator || "Unknown"}</Badge>
           <Badge className="rounded-xl bg-emerald-500/20 text-emerald-200">Verifier: {level.verifier || "Unknown"}</Badge>
           {level.level_url && <Badge className="rounded-xl bg-blue-500/20 text-blue-200">Click to open</Badge>}
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button
+            onClick={(event) => {
+              event.stopPropagation();
+              onReport?.(level);
+            }}
+            className="inline-flex items-center rounded-xl border border-red-300/20 bg-red-500/10 px-3 py-1.5 text-xs font-bold text-red-200 transition hover:bg-red-500/20"
+          >
+            <AlertTriangle className="mr-1 h-3 w-3" /> Report
+          </button>
         </div>
         <p className="mt-4 text-sm text-slate-400">
           {listType === "pooplist" ? "Marked as possible and currently placed on the ranked list." : "Marked as impossible and currently placed on the ranked list."}
@@ -1773,13 +2074,15 @@ function RequestsPanel({ requests, onApprove, onDeny }) {
   );
 }
 
-function ListPage({ listType, levels, isAdmin, user, requests, addLevel, removeLevel, saveEditedLevels, submitRequest, submitEditRequests, approveRequest, denyRequest, statusMessage, isConfigured, uploadThumbnail }) {
+function ListPage({ listType, levels, isAdmin, user, requests, reports, addLevel, removeLevel, saveEditedLevels, submitRequest, submitEditRequests, submitReport, resolveReport, dismissReport, approveRequest, denyRequest, statusMessage, isConfigured, uploadThumbnail }) {
   const [showAdd, setShowAdd] = useState(false);
   const [showRequest, setShowRequest] = useState(false);
   const [removeMode, setRemoveMode] = useState(false);
   const [showRequests, setShowRequests] = useState(false);
+  const [showReports, setShowReports] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [reportingLevel, setReportingLevel] = useState(null);
 
   const title = listType === "pooplist" ? "The Pooplist" : "The Peelist";
   const subtitle = listType === "pooplist" ? "Possible levels ranked by placement, verification, and list status." : "Impossible levels ranked by placement, difficulty, and list status.";
@@ -1808,6 +2111,7 @@ function ListPage({ listType, levels, isAdmin, user, requests, addLevel, removeL
   };
 
   const listRequests = requests.filter((request) => request.list_type === listType || request.listType === listType);
+  const listReports = (reports || []).filter((report) => (report.list_type === listType || report.listType === listType) && report.status === "pending");
 
   return (
     <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
@@ -1833,6 +2137,7 @@ function ListPage({ listType, levels, isAdmin, user, requests, addLevel, removeL
                 <Button onClick={() => setShowAdd((value) => !value)} className="rounded-2xl"><Plus className="mr-2 h-4 w-4" />Add level</Button>
                 <Button onClick={() => setRemoveMode((value) => !value)} variant={removeMode ? "destructive" : "secondary"} className="rounded-2xl"><Trash2 className="mr-2 h-4 w-4" />{removeMode ? "Cancel remove" : "Remove level"}</Button>
                 <Button onClick={() => setShowRequests((value) => !value)} variant="secondary" className="rounded-2xl"><Inbox className="mr-2 h-4 w-4" />View requests ({listRequests.length})</Button>
+                <Button onClick={() => setShowReports((value) => !value)} variant="secondary" className="rounded-2xl"><AlertTriangle className="mr-2 h-4 w-4" />View reports ({listReports.length})</Button>
               </>
             )}
           </div>
@@ -1888,9 +2193,24 @@ function ListPage({ listType, levels, isAdmin, user, requests, addLevel, removeL
             />
           </motion.div>
         )}
+        {reportingLevel && (
+          <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}>
+            <ReportLevelPanel
+              level={reportingLevel}
+              user={user}
+              onSubmit={(level, reasonType, details) => submitReport(listType, level, reasonType, details)}
+              onCancel={() => setReportingLevel(null)}
+            />
+          </motion.div>
+        )}
         {showRequests && isAdmin && (
           <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}>
             <RequestsPanel requests={listRequests} onApprove={approveRequest} onDeny={denyRequest} />
+          </motion.div>
+        )}
+        {showReports && isAdmin && (
+          <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}>
+            <ReportsPanel reports={listReports} onResolve={resolveReport} onDismiss={dismissReport} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -1909,7 +2229,7 @@ function ListPage({ listType, levels, isAdmin, user, requests, addLevel, removeL
         )}
         <AnimatePresence>
           {filteredLevels.map((level, index) => (
-            <LevelCard key={level.id} level={level} index={index} listType={listType} removeMode={isAdmin && removeMode} onRemove={submitRemove} reorderMode={false} draggable={false} />
+            <LevelCard key={level.id} level={level} index={index} listType={listType} removeMode={isAdmin && removeMode} onRemove={submitRemove} onReport={setReportingLevel} reorderMode={false} draggable={false} />
           ))}
         </AnimatePresence>
       </div>
@@ -1929,6 +2249,9 @@ export default function PeePooListWebsite() {
   const [requests, setRequests] = useState([]);
   const [userRequests, setUserRequests] = useState([]);
   const [statusRequests, setStatusRequests] = useState([]);
+  const [reports, setReports] = useState([]);
+  const [changelogEntries, setChangelogEntries] = useState([]);
+  const [chatMessages, setChatMessages] = useState([]);
   const [notifications, setNotifications] = useState([]);
 
   const isAdmin = profile?.role === "admin";
@@ -1998,6 +2321,57 @@ export default function PeePooListWebsite() {
     setStatusRequests(data || []);
   }
 
+  async function loadReports() {
+    if (!supabase || !isAdmin) {
+      setReports([]);
+      return;
+    }
+
+    const { data, error } = await supabase.from("reports").select("*").order("created_at", { ascending: false });
+
+    if (error) {
+      setStatusMessage(`Could not load reports: ${error.message}`);
+      return;
+    }
+
+    setReports(data || []);
+  }
+
+  async function loadChangelogEntries() {
+    if (!supabase) return;
+
+    const { data, error } = await supabase
+      .from("changelog")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    if (error) {
+      setStatusMessage(`Could not load changelog: ${error.message}`);
+      return;
+    }
+
+    setChangelogEntries(data || []);
+  }
+
+  async function loadChatMessages() {
+    if (!supabase) return;
+
+    const { data, error } = await supabase
+      .from("public_chat_messages")
+      .select("*")
+      .eq("is_hidden", false)
+      .order("created_at", { ascending: false })
+      .limit(80);
+
+    if (error) {
+      setStatusMessage(`Could not load public chat: ${error.message}`);
+      return;
+    }
+
+    setChatMessages(data || []);
+  }
+
   async function loadNotifications(nextUser = user) {
     if (!supabase || !nextUser) {
       setNotifications([]);
@@ -2063,6 +2437,8 @@ export default function PeePooListWebsite() {
       await loadProfile(nextUser);
       await loadNotifications(nextUser);
       await loadUserRequests(nextUser);
+      await loadChangelogEntries();
+      await loadChatMessages();
     }
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -2075,6 +2451,8 @@ export default function PeePooListWebsite() {
 
     startAuth();
     loadLevels();
+    loadChangelogEntries();
+    loadChatMessages();
 
     return () => listener.subscription.unsubscribe();
   }, []);
@@ -2082,6 +2460,7 @@ export default function PeePooListWebsite() {
   useEffect(() => {
     loadRequests();
     loadStatusRequests();
+    loadReports();
     loadNotifications(user);
     loadUserRequests(user);
   }, [isAdmin, user]);
@@ -2152,6 +2531,7 @@ export default function PeePooListWebsite() {
     setRequests([]);
     setUserRequests([]);
     setStatusRequests([]);
+    setReports([]);
     setNotifications([]);
     setAuthMessage("Signed out.");
   }
@@ -2555,6 +2935,136 @@ export default function PeePooListWebsite() {
     }
   }
 
+  async function submitReport(listType, level, reasonType, details) {
+    if (!supabase || !user) {
+      setStatusMessage("Sign in before reporting levels.");
+      return;
+    }
+
+    try {
+      const { error } = await supabase.from("reports").insert({
+        level_id: level.id,
+        list_type: listType,
+        level_name: level.name || "Unnamed level",
+        reason_type: reasonType,
+        details: details?.trim() || null,
+        reporter_email: user.email || null,
+        status: "pending",
+        created_by: user.id,
+      });
+
+      if (error) throw error;
+
+      setStatusMessage("Report submitted for admin review.");
+      await loadReports();
+    } catch (error) {
+      setStatusMessage(`Could not submit report: ${error.message}`);
+    }
+  }
+
+  async function resolveReport(report) {
+    if (!supabase || !isAdmin) return;
+
+    try {
+      const { error } = await supabase.from("reports").update({ status: "resolved" }).eq("id", report.id);
+      if (error) throw error;
+
+      await loadReports();
+      setStatusMessage("Report marked resolved.");
+    } catch (error) {
+      setStatusMessage(`Could not resolve report: ${error.message}`);
+    }
+  }
+
+  async function dismissReport(report) {
+    if (!supabase || !isAdmin) return;
+
+    try {
+      const { error } = await supabase.from("reports").update({ status: "dismissed" }).eq("id", report.id);
+      if (error) throw error;
+
+      await loadReports();
+      setStatusMessage("Report dismissed.");
+    } catch (error) {
+      setStatusMessage(`Could not dismiss report: ${error.message}`);
+    }
+  }
+
+  async function addChangelogEntry(form) {
+    if (!supabase || !isAdmin) return false;
+
+    try {
+      const { error } = await supabase.from("changelog").insert({
+        kind: form.kind || "update",
+        title: form.title.trim(),
+        body: form.body?.trim() || null,
+        created_by: user?.id || null,
+      });
+
+      if (error) throw error;
+
+      await loadChangelogEntries();
+      setStatusMessage("Changelog entry posted.");
+      return true;
+    } catch (error) {
+      setStatusMessage(`Could not post changelog entry: ${error.message}`);
+      return false;
+    }
+  }
+
+  async function deleteChangelogEntry(entry) {
+    if (!supabase || !isAdmin) return;
+
+    try {
+      const { error } = await supabase.from("changelog").delete().eq("id", entry.id);
+      if (error) throw error;
+
+      await loadChangelogEntries();
+      setStatusMessage("Changelog entry deleted.");
+    } catch (error) {
+      setStatusMessage(`Could not delete changelog entry: ${error.message}`);
+    }
+  }
+
+  async function sendChatMessage(message) {
+    if (!supabase || !user) {
+      setStatusMessage("Sign in before chatting.");
+      return false;
+    }
+
+    try {
+      const displayName = user.email ? user.email.split("@")[0] : "PeePooList user";
+      const { error } = await supabase.from("public_chat_messages").insert({
+        message: String(message || "").trim(),
+        display_name: displayName,
+        is_hidden: false,
+        created_by: user.id,
+      });
+
+      if (error) throw error;
+
+      await loadChatMessages();
+      return true;
+    } catch (error) {
+      setStatusMessage(`Could not send chat message: ${error.message}`);
+      return false;
+    }
+  }
+
+  async function hideChatMessage(message) {
+    if (!supabase || !isAdmin) return;
+
+    try {
+      const { error } = await supabase.from("public_chat_messages").update({ is_hidden: true }).eq("id", message.id);
+      if (error) throw error;
+
+      await loadChatMessages();
+      setStatusMessage("Chat message removed.");
+    } catch (error) {
+      setStatusMessage(`Could not remove chat message: ${error.message}`);
+    }
+  }
+
   async function approveRequest(request) {
     if (!supabase || !isAdmin) return;
 
@@ -2642,6 +3152,20 @@ export default function PeePooListWebsite() {
     if (tab === "rules") return <RulesPage />;
     if (tab === "privacy") return <PrivacyPolicyPage />;
     if (tab === "contact") return <ContactPage />;
+    if (tab === "changelog") {
+      return (
+        <ChangelogPage
+          entries={changelogEntries}
+          chatMessages={chatMessages}
+          user={user}
+          isAdmin={isAdmin}
+          onAddEntry={addChangelogEntry}
+          onDeleteEntry={deleteChangelogEntry}
+          onSendChatMessage={sendChatMessage}
+          onHideChatMessage={hideChatMessage}
+        />
+      );
+    }
     if (tab === "my-requests") return <MyRequestsPage requests={userRequests} user={user} setTab={setTab} />;
 
     if (tab === "pooplist") {
@@ -2652,11 +3176,15 @@ export default function PeePooListWebsite() {
           isAdmin={isAdmin}
           user={user}
           requests={requests}
+          reports={reports}
           addLevel={addLevel}
           removeLevel={removeLevel}
           saveEditedLevels={saveEditedLevels}
           submitRequest={submitRequest}
           submitEditRequests={submitEditRequests}
+          submitReport={submitReport}
+          resolveReport={resolveReport}
+          dismissReport={dismissReport}
           approveRequest={approveRequest}
           denyRequest={denyRequest}
           statusMessage={statusMessage}
@@ -2673,11 +3201,15 @@ export default function PeePooListWebsite() {
           isAdmin={isAdmin}
           user={user}
           requests={requests}
+          reports={reports}
           addLevel={addLevel}
           removeLevel={removeLevel}
           saveEditedLevels={saveEditedLevels}
           submitRequest={submitRequest}
           submitEditRequests={submitEditRequests}
+          submitReport={submitReport}
+          resolveReport={resolveReport}
+          dismissReport={dismissReport}
           approveRequest={approveRequest}
           denyRequest={denyRequest}
           statusMessage={statusMessage}
@@ -2707,7 +3239,7 @@ export default function PeePooListWebsite() {
         isConfigured={isSupabaseConfigured}
       />
     );
-  }, [tab, levels, isAdmin, user, profile, authEmail, authPassword, authMessage, requests, userRequests, statusRequests, notifications, statusMessage]);
+  }, [tab, levels, isAdmin, user, profile, authEmail, authPassword, authMessage, requests, reports, userRequests, statusRequests, changelogEntries, chatMessages, notifications, statusMessage]);
 
   return (
     <SiteShell
@@ -2723,6 +3255,7 @@ export default function PeePooListWebsite() {
       submitStatusRequest={submitStatusRequest}
       requests={requests}
       statusRequests={statusRequests}
+      reports={reports}
       notifications={notifications}
       markNotificationsRead={markNotificationsRead}
     >
