@@ -204,6 +204,27 @@ function profileHandle(profile, user) {
   return String(user?.id || profile?.user_id || "").slice(0, 8);
 }
 
+function profileAvatarUrl(profile) {
+  return String(profile?.avatar_url || "").trim();
+}
+
+function ProfileAvatar({ profile, user, className = "h-10 w-10", textClassName = "text-lg" }) {
+  const avatar = profileAvatarUrl(profile);
+  const initial = String(profileLabel(profile, user)).slice(0, 1).toUpperCase() || "P";
+
+  return (
+    <div className={cn("grid shrink-0 place-items-center overflow-hidden rounded-2xl border border-white/10 bg-[#c0ffbf] font-black text-white shadow-lg shadow-black/25", className)}>
+      {avatar ? (
+        <img src={avatar} alt={`${profileLabel(profile, user)} avatar`} className="h-full w-full object-cover" />
+      ) : (
+        <span className={textClassName} style={{ textShadow: "1px 1px 0 #000, -1px 1px 0 #000, 1px -1px 0 #000, -1px -1px 0 #000" }}>
+          {initial}
+        </span>
+      )}
+    </div>
+  );
+}
+
 function roleName(role) {
   if (role === "admin") return "Admin";
   if (role === "priority") return "Priority";
@@ -711,20 +732,36 @@ function StatusRequestPanel({ onCancel, onSubmitStatusRequest }) {
   );
 }
 
-function PublicProfilePanel({ user, profile, onCancel, onUpdateProfile }) {
+function PublicProfilePanel({ user, profile, onCancel, onUpdateProfile, onUploadAvatar }) {
   const [displayName, setDisplayName] = useState(profile?.display_name || "");
   const [handle, setHandle] = useState(profile?.handle || "");
   const [bio, setBio] = useState(profile?.bio || "");
+  const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || "");
+  const [avatarPreview, setAvatarPreview] = useState(profile?.avatar_url || "");
+  const [avatarFile, setAvatarFile] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState("");
 
   async function submit(event) {
     event.preventDefault();
     setIsSaving(true);
+
+    let finalAvatarUrl = avatarUrl;
+
+    if (avatarFile && onUploadAvatar) {
+      finalAvatarUrl = await onUploadAvatar(avatarFile);
+      if (!finalAvatarUrl) {
+        setIsSaving(false);
+        setMessage("Could not upload avatar.");
+        return;
+      }
+    }
+
     const result = await onUpdateProfile({
       display_name: displayName,
       handle,
       bio,
+      avatar_url: finalAvatarUrl,
     });
     setIsSaving(false);
 
@@ -748,6 +785,26 @@ function PublicProfilePanel({ user, profile, onCancel, onUpdateProfile }) {
       <p className="mt-1 text-xs text-slate-400">This is what other visitors can see on your PeePooList profile.</p>
 
       <form onSubmit={submit} className="mt-4 space-y-4">
+        <div>
+          <label className="mb-2 block text-sm font-bold text-slate-200">Avatar</label>
+          <div className="flex items-center gap-4">
+            <ProfileAvatar profile={{ ...profile, avatar_url: avatarPreview }} user={user} className="h-16 w-16 rounded-[1.4rem]" textClassName="text-2xl" />
+            <div className="flex-1">
+              <Input
+                type="file"
+                accept="image/*"
+                onChange={(event) => {
+                  const file = event.target.files?.[0] || null;
+                  setAvatarFile(file);
+                  setAvatarPreview(file ? URL.createObjectURL(file) : avatarUrl);
+                }}
+                className="rounded-2xl border-white/10 bg-white/10"
+              />
+              <p className="mt-1 text-xs text-slate-500">Square images work best. PNG, JPG, or WebP is fine.</p>
+            </div>
+          </div>
+        </div>
+
         <div>
           <label className="mb-2 block text-sm font-bold text-slate-200">Username</label>
           <Input
@@ -797,7 +854,57 @@ function PublicProfilePanel({ user, profile, onCancel, onUpdateProfile }) {
   );
 }
 
-function ProfileMenu({ user, isAdmin, profile, onSignOut, onDeleteAccount, onChangeEmail, onChangePassword, onSubmitStatusRequest, onUpdateProfile, onOpenProfile }) {
+
+function MoreMenu({ tab, setTab, user, isAdmin }) {
+  const [open, setOpen] = useState(false);
+
+  const items = [
+    { tab: "changelog", label: "Changelog + Chat", show: true },
+    { tab: "my-requests", label: "My Requests", show: Boolean(user) },
+    { tab: "rules", label: "Rules", show: true },
+    { tab: "about", label: "About", show: true },
+    { tab: "privacy", label: "Privacy Policy", show: true },
+    { tab: "contact", label: "Contact", show: true },
+    { tab: "admin", label: "Admin", show: Boolean(isAdmin) },
+  ].filter((item) => item.show);
+
+  return (
+    <div className="relative">
+      <Button onClick={() => setOpen((value) => !value)} variant="secondary" className="rounded-2xl">
+        Menu <ChevronDown className="ml-2 h-4 w-4" />
+      </Button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -8, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.98 }}
+            className="absolute right-0 top-12 z-50 w-56 rounded-[1.5rem] border border-white/10 bg-slate-950/95 p-2 text-slate-100 shadow-2xl shadow-black/50 backdrop-blur-xl"
+          >
+            {items.map((item) => (
+              <button
+                key={item.tab}
+                onClick={() => {
+                  setTab(item.tab);
+                  setOpen(false);
+                }}
+                className={cn(
+                  "block w-full rounded-2xl px-4 py-3 text-left text-sm font-bold transition hover:bg-white/10",
+                  tab === item.tab ? "bg-white text-slate-950 hover:bg-white" : "text-slate-200"
+                )}
+              >
+                {item.label}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function ProfileMenu({ user, isAdmin, profile, onSignOut, onDeleteAccount, onChangeEmail, onChangePassword, onSubmitStatusRequest, onUpdateProfile, onUploadAvatar, onOpenProfile }) {
   const [open, setOpen] = useState(false);
   const [activePanel, setActivePanel] = useState("");
 
@@ -815,7 +922,11 @@ function ProfileMenu({ user, isAdmin, profile, onSignOut, onDeleteAccount, onCha
         variant="secondary"
         className="rounded-2xl"
       >
-        <UserCircle className="mr-2 h-4 w-4" />
+        {user ? (
+          <ProfileAvatar profile={profile} user={user} className="mr-2 h-5 w-5 rounded-lg" textClassName="text-xs" />
+        ) : (
+          <UserCircle className="mr-2 h-4 w-4" />
+        )}
         Profile
       </Button>
 
@@ -829,11 +940,14 @@ function ProfileMenu({ user, isAdmin, profile, onSignOut, onDeleteAccount, onCha
           >
             {user ? (
               <>
-                <div className="mb-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
-                  <p className="break-words text-sm font-bold text-white">{profileLabel(profile, user)}</p>
-                  <p className="mt-1 text-xs text-emerald-200">@{profileHandle(profile, user)}</p>
-                  <p className="mt-1 break-all text-[11px] text-slate-500">{user.email}</p>
-                  <p className="mt-1 text-xs text-slate-400">Status: {roleName(profile?.role)}</p>
+                <div className="mb-3 flex gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+                  <ProfileAvatar profile={profile} user={user} className="h-11 w-11 rounded-xl" textClassName="text-lg" />
+                  <div className="min-w-0">
+                    <p className="break-words text-sm font-bold text-white">{profileLabel(profile, user)}</p>
+                    <p className="mt-1 text-xs text-emerald-200">@{profileHandle(profile, user)}</p>
+                    <p className="mt-1 break-all text-[11px] text-slate-500">{user.email}</p>
+                    <p className="mt-1 text-xs text-slate-400">Status: {roleName(profile?.role)}</p>
+                  </div>
                 </div>
                 <div className="grid gap-2">
                   <Button variant="secondary" onClick={onOpenProfile} className="justify-start rounded-2xl">
@@ -868,7 +982,7 @@ function ProfileMenu({ user, isAdmin, profile, onSignOut, onDeleteAccount, onCha
         )}
 
         {open && activePanel === "public-profile" && user && (
-          <PublicProfilePanel user={user} profile={profile} onCancel={closeSidePanel} onUpdateProfile={onUpdateProfile} />
+          <PublicProfilePanel user={user} profile={profile} onCancel={closeSidePanel} onUpdateProfile={onUpdateProfile} onUploadAvatar={onUploadAvatar} />
         )}
 
         {open && activePanel === "email" && user && (
@@ -1044,7 +1158,7 @@ function StatusRequestsPanel({ statusRequests, onApprove, onDeny }) {
   );
 }
 
-function SiteShell({ children, tab, setTab, isAdmin, user, profile, signOut, deleteAccount, changeEmail, changePassword, submitStatusRequest, updateProfile, requests, statusRequests, reports, notifications, markNotificationsRead }) {
+function SiteShell({ children, tab, setTab, isAdmin, user, profile, signOut, deleteAccount, changeEmail, changePassword, submitStatusRequest, updateProfile, uploadAvatar, requests, statusRequests, reports, notifications, markNotificationsRead }) {
   return (
     <div className="min-h-screen bg-[#090d18] text-slate-100 selection:bg-yellow-300 selection:text-black">
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
@@ -1074,22 +1188,10 @@ function SiteShell({ children, tab, setTab, isAdmin, user, profile, signOut, del
             <Button variant={tab === "peelist" ? "default" : "secondary"} onClick={() => setTab("peelist")} className="rounded-2xl">
               The Peelist
             </Button>
-            <Button variant={tab === "changelog" ? "default" : "secondary"} onClick={() => setTab("changelog")} className="rounded-2xl">
-              Changelog
-            </Button>
             <Button variant={tab === "stats" ? "default" : "secondary"} onClick={() => setTab("stats")} className="rounded-2xl">
               Stats
             </Button>
-            {isAdmin && (
-              <Button variant={tab === "admin" ? "default" : "secondary"} onClick={() => setTab("admin")} className="rounded-2xl">
-                Admin
-              </Button>
-            )}
-            {user && (
-              <Button variant={tab === "my-requests" ? "default" : "secondary"} onClick={() => setTab("my-requests")} className="rounded-2xl">
-                My Requests
-              </Button>
-            )}
+            <MoreMenu tab={tab} setTab={setTab} user={user} isAdmin={isAdmin} />
             <NotificationsMenu
               user={user}
               isAdmin={isAdmin}
@@ -1109,6 +1211,7 @@ function SiteShell({ children, tab, setTab, isAdmin, user, profile, signOut, del
               onChangePassword={changePassword}
               onSubmitStatusRequest={submitStatusRequest}
               onUpdateProfile={updateProfile}
+              onUploadAvatar={uploadAvatar}
               onOpenProfile={() => setTab(userProfileTab(profile?.handle || user?.id))}
             />
           </nav>
@@ -1554,9 +1657,7 @@ function UserProfilePage({ profile, badges, viewer, isAdmin, onBack, onAwardBadg
         <div className="p-6 md:p-8">
           <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-4">
-              <div className="grid h-20 w-20 shrink-0 place-items-center rounded-[1.7rem] border border-white/10 bg-[#c0ffbf] text-3xl font-black text-white shadow-xl shadow-black/30" style={{ textShadow: "1px 1px 0 #000, -1px 1px 0 #000, 1px -1px 0 #000, -1px -1px 0 #000" }}>
-                {String(profileLabel(profile)).slice(0, 1).toUpperCase()}
-              </div>
+              <ProfileAvatar profile={profile} className="h-20 w-20 rounded-[1.7rem]" textClassName="text-3xl" />
               <div>
                 <div className="mb-2 flex flex-wrap gap-2">
                   <Badge className={roleBadgeClass(profile?.role)}>{roleName(profile?.role)}</Badge>
@@ -2162,15 +2263,21 @@ function AdminDashboardPage({ isAdmin, levels, requests, statusRequests, reports
   );
 }
 
-function LevelDetailPage({ level, index, listType, changelogEntries, user, onBack, onSubmitReport }) {
+function LevelDetailPage({ level, index, listType, changelogEntries, comments, user, isAdmin, onBack, onSubmitReport, onSendComment, onHideComment }) {
   const [copied, setCopied] = useState(false);
   const [isReporting, setIsReporting] = useState(false);
+  const [commentText, setCommentText] = useState("");
+  const [isPostingComment, setIsPostingComment] = useState(false);
+  const [commentMessage, setCommentMessage] = useState("");
   const listName = listType === "pooplist" ? "The Pooplist" : "The Peelist";
   const statusText = listType === "pooplist" ? "Possible level" : "Impossible level";
   const rank = Number(level?.rank || index + 1 || 1);
   const relatedChanges = (changelogEntries || [])
     .filter((entry) => `${entry.title || ""} ${entry.body || ""}`.toLowerCase().includes(String(level?.name || "").toLowerCase()))
     .slice(0, 5);
+  const levelComments = (comments || [])
+    .filter((comment) => String(comment.level_id) === String(level?.id))
+    .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
 
   async function copyShareLink() {
     const url = levelShareUrl(level.id);
@@ -2182,6 +2289,21 @@ function LevelDetailPage({ level, index, listType, changelogEntries, user, onBac
       window.setTimeout(() => setCopied(false), 1400);
     } catch {
       window.prompt("Copy this level link:", url);
+    }
+  }
+
+  async function submitComment(event) {
+    event.preventDefault();
+    if (!user || !commentText.trim()) return;
+
+    setIsPostingComment(true);
+    const ok = await onSendComment?.(level, listType, commentText);
+    setIsPostingComment(false);
+
+    if (ok) {
+      setCommentText("");
+      setCommentMessage("Comment posted.");
+      window.setTimeout(() => setCommentMessage(""), 1400);
     }
   }
 
@@ -2282,6 +2404,60 @@ function LevelDetailPage({ level, index, listType, changelogEntries, user, onBac
           </CardContent>
         </Card>
       </section>
+
+
+      <Card className="rounded-[2rem] border-white/10 bg-slate-950/80 text-slate-100 shadow-2xl shadow-black/30">
+        <CardContent className="p-6">
+          <h3 className="text-2xl font-black">Comments</h3>
+          <p className="mt-1 text-sm text-slate-400">Signed-in users can comment on this level. Admins can remove bad comments.</p>
+
+          {user ? (
+            <form onSubmit={submitComment} className="mt-4 space-y-3">
+              <Textarea
+                value={commentText}
+                maxLength={280}
+                onChange={(event) => setCommentText(event.target.value)}
+                placeholder={`Comment on ${level.name}...`}
+                className="min-h-24 rounded-2xl border-white/10 bg-white/10"
+              />
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-xs text-slate-500">{commentText.length}/280</p>
+                <Button type="submit" disabled={isPostingComment || !commentText.trim()} className="rounded-2xl">
+                  {isPostingComment ? "Posting..." : "Post comment"}
+                </Button>
+              </div>
+              {commentMessage && <p className="text-sm font-bold text-emerald-200">{commentMessage}</p>}
+            </form>
+          ) : (
+            <div className="mt-4 rounded-2xl border border-amber-300/30 bg-amber-300/10 p-4 text-sm text-amber-100">
+              Sign in on the Home page to comment.
+            </div>
+          )}
+
+          <div className="mt-5 space-y-3">
+            {levelComments.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-white/15 p-6 text-center text-slate-500">No comments yet.</div>
+            ) : (
+              levelComments.map((comment) => (
+                <div key={comment.id} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="font-black text-white">{comment.display_name || "PeePooList user"}</p>
+                      <p className="text-xs text-slate-500">{formatDateTime(comment.created_at)}</p>
+                    </div>
+                    {isAdmin && (
+                      <button onClick={() => onHideComment?.(comment)} className="rounded-xl bg-red-500/20 px-3 py-1 text-xs font-bold text-red-200 hover:bg-red-500/30">
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-slate-200">{comment.message}</p>
+                </div>
+              ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       <Card className="rounded-[2rem] border-white/10 bg-slate-950/80 text-slate-100 shadow-2xl shadow-black/30">
         <CardContent className="p-6">
@@ -3043,6 +3219,7 @@ export default function PeePooListWebsite() {
   const [notifications, setNotifications] = useState([]);
   const [publicProfiles, setPublicProfiles] = useState([]);
   const [userBadges, setUserBadges] = useState([]);
+  const [levelComments, setLevelComments] = useState([]);
 
   const isAdmin = profile?.role === "admin";
   const isPriority = profile?.role === "priority";
@@ -3053,7 +3230,7 @@ export default function PeePooListWebsite() {
       return;
     }
 
-    const { data, error } = await supabase.from("profiles").select("user_id, role, display_name, handle, bio").eq("user_id", nextUser.id).maybeSingle();
+    const { data, error } = await supabase.from("profiles").select("user_id, role, display_name, handle, bio, avatar_url").eq("user_id", nextUser.id).maybeSingle();
 
     if (error) {
       setProfile({ role: "user" });
@@ -3162,6 +3339,23 @@ export default function PeePooListWebsite() {
     setChatMessages(data || []);
   }
 
+  async function loadLevelComments() {
+    if (!supabase) return;
+
+    const { data, error } = await supabase
+      .from("level_comments")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(500);
+
+    if (error) {
+      setStatusMessage(`Could not load level comments: ${error.message}`);
+      return;
+    }
+
+    setLevelComments(data || []);
+  }
+
   async function loadNotifications(nextUser = user) {
     if (!supabase || !nextUser) {
       setNotifications([]);
@@ -3203,7 +3397,7 @@ export default function PeePooListWebsite() {
 
     const { data, error } = await supabase
       .from("profiles")
-      .select("user_id, role, display_name, handle, bio, updated_at")
+      .select("user_id, role, display_name, handle, bio, avatar_url, updated_at")
       .order("handle", { ascending: true, nullsFirst: false });
 
     if (error) {
@@ -3272,6 +3466,7 @@ export default function PeePooListWebsite() {
       await loadUserRequests(nextUser);
       await loadChangelogEntries();
       await loadChatMessages();
+      await loadLevelComments();
       await loadPublicProfiles();
       await loadUserBadges();
     }
@@ -3466,6 +3661,7 @@ export default function PeePooListWebsite() {
         p_display_name: String(form.display_name || "").trim().slice(0, 40),
         p_handle: cleanHandle,
         p_bio: String(form.bio || "").trim().slice(0, 240),
+        p_avatar_url: String(form.avatar_url || "").trim() || null,
       });
 
       if (error) throw error;
@@ -3634,6 +3830,31 @@ export default function PeePooListWebsite() {
       return data.publicUrl;
     } catch (error) {
       setStatusMessage(`Could not upload thumbnail: ${error.message}`);
+      return "";
+    }
+  }
+
+  async function uploadAvatar(file) {
+    if (!supabase || !user) {
+      setStatusMessage("Sign in before uploading an avatar.");
+      return "";
+    }
+
+    try {
+      const extension = (file.name.split(".").pop() || "png").toLowerCase();
+      const path = `${user.id}/avatar-${Date.now()}.${extension}`;
+      const { error } = await supabase.storage.from("avatars").upload(path, file, {
+        cacheControl: "3600",
+        upsert: false,
+        contentType: file.type,
+      });
+
+      if (error) throw error;
+
+      const { data } = supabase.storage.from("avatars").getPublicUrl(path);
+      return data.publicUrl;
+    } catch (error) {
+      setStatusMessage(`Could not upload avatar: ${error.message}`);
       return "";
     }
   }
@@ -3931,7 +4152,7 @@ export default function PeePooListWebsite() {
     }
 
     try {
-      const displayName = user.email ? user.email.split("@")[0] : "PeePooList user";
+      const displayName = profileLabel(profile, user);
       const { error } = await supabase.from("public_chat_messages").insert({
         message: String(message || "").trim(),
         display_name: displayName,
@@ -3960,6 +4181,49 @@ export default function PeePooListWebsite() {
       setStatusMessage("Chat message removed.");
     } catch (error) {
       setStatusMessage(`Could not remove chat message: ${error.message}`);
+    }
+  }
+
+  async function sendLevelComment(level, listType, message) {
+    if (!supabase || !user) {
+      setStatusMessage("Sign in before commenting.");
+      return false;
+    }
+
+    const cleanMessage = String(message || "").trim().slice(0, 280);
+    if (!cleanMessage) return false;
+
+    try {
+      const { error } = await supabase.from("level_comments").insert({
+        level_id: level.id,
+        list_type: listType,
+        message: cleanMessage,
+        display_name: profileLabel(profile, user),
+        is_hidden: false,
+        created_by: user.id,
+      });
+
+      if (error) throw error;
+
+      await loadLevelComments();
+      return true;
+    } catch (error) {
+      setStatusMessage(`Could not post comment: ${error.message}`);
+      return false;
+    }
+  }
+
+  async function hideLevelComment(comment) {
+    if (!supabase || !isAdmin) return;
+
+    try {
+      const { error } = await supabase.from("level_comments").update({ is_hidden: true }).eq("id", comment.id);
+      if (error) throw error;
+
+      await loadLevelComments();
+      setStatusMessage("Comment removed.");
+    } catch (error) {
+      setStatusMessage(`Could not remove comment: ${error.message}`);
     }
   }
 
@@ -4061,9 +4325,13 @@ export default function PeePooListWebsite() {
             index={match.index}
             listType={match.listType}
             changelogEntries={changelogEntries}
+            comments={levelComments}
             user={user}
+            isAdmin={isAdmin}
             onBack={() => setTab(match.listType)}
             onSubmitReport={(level, reasonType, details) => submitReport(match.listType, level, reasonType, details)}
+            onSendComment={sendLevelComment}
+            onHideComment={hideLevelComment}
           />
         );
       }
@@ -4239,7 +4507,7 @@ export default function PeePooListWebsite() {
         isConfigured={isSupabaseConfigured}
       />
     );
-  }, [tab, levels, isAdmin, user, profile, publicProfiles, userBadges, authEmail, authPassword, authMessage, requests, reports, userRequests, statusRequests, changelogEntries, chatMessages, notifications, statusMessage]);
+  }, [tab, levels, isAdmin, user, profile, publicProfiles, userBadges, authEmail, authPassword, authMessage, requests, reports, userRequests, statusRequests, changelogEntries, chatMessages, levelComments, notifications, statusMessage]);
 
   return (
     <SiteShell
@@ -4254,6 +4522,7 @@ export default function PeePooListWebsite() {
       changePassword={changePassword}
       submitStatusRequest={submitStatusRequest}
       updateProfile={updateProfile}
+      uploadAvatar={uploadAvatar}
       requests={requests}
       statusRequests={statusRequests}
       reports={reports}
