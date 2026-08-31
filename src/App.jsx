@@ -1638,9 +1638,17 @@ function LevelDetailPage({ level, index, listType, changelogEntries, user, onBac
             </div>
 
             {level.level_url ? (
-              <Button onClick={() => openLevelUrl(level.level_url)} className="w-full rounded-2xl bg-blue-600 text-white hover:bg-blue-500">
+              <button
+                type="button"
+                onClick={() => openLevelUrl(level.level_url)}
+                className="inline-flex w-full items-center justify-center rounded-2xl border-2 border-black px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-emerald-950/40 transition hover:brightness-110"
+                style={{
+                  backgroundColor: "#c0ffbf",
+                  textShadow: "1px 1px 0 #000, -1px 1px 0 #000, 1px -1px 0 #000, -1px -1px 0 #000",
+                }}
+              >
                 Open level link
-              </Button>
+              </button>
             ) : (
               <div className="rounded-2xl border border-dashed border-white/15 p-4 text-center text-sm text-slate-500">No level link added yet.</div>
             )}
