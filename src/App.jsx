@@ -888,6 +888,10 @@ function PublicProfilePanel({ user, profile, onCancel, onUpdateProfile, onUpload
 function MoreMenu({ tab, setTab, user, isAdmin }) {
   const [open, setOpen] = useState(false);
 
+  useEffect(() => {
+    setOpen(false);
+  }, [tab]);
+
   const items = [
     { tab: "changelog", label: "Changelog + Chat", show: true },
     { tab: "my-requests", label: "My Requests", show: Boolean(user) },
@@ -934,9 +938,14 @@ function MoreMenu({ tab, setTab, user, isAdmin }) {
   );
 }
 
-function ProfileMenu({ user, isAdmin, profile, onSignOut, onDeleteAccount, onChangeEmail, onChangePassword, onSubmitStatusRequest, onUpdateProfile, onUploadAvatar, onOpenProfile }) {
+function ProfileMenu({ tab, user, isAdmin, profile, onSignOut, onDeleteAccount, onChangeEmail, onChangePassword, onSubmitStatusRequest, onUpdateProfile, onUploadAvatar, onOpenProfile }) {
   const [open, setOpen] = useState(false);
   const [activePanel, setActivePanel] = useState("");
+
+  useEffect(() => {
+    setOpen(false);
+    setActivePanel("");
+  }, [tab]);
 
   function closeSidePanel() {
     setActivePanel("");
@@ -980,7 +989,15 @@ function ProfileMenu({ user, isAdmin, profile, onSignOut, onDeleteAccount, onCha
                   </div>
                 </div>
                 <div className="grid gap-2">
-                  <Button variant="secondary" onClick={onOpenProfile} className="justify-start rounded-2xl">
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setOpen(false);
+                      setActivePanel("");
+                      onOpenProfile();
+                    }}
+                    className="justify-start rounded-2xl"
+                  >
                     <UserCircle className="mr-2 h-4 w-4" /> View Profile
                   </Button>
                   <Button variant="secondary" onClick={() => setActivePanel("public-profile")} className="justify-start rounded-2xl">
@@ -1031,8 +1048,12 @@ function ProfileMenu({ user, isAdmin, profile, onSignOut, onDeleteAccount, onCha
   );
 }
 
-function NotificationsMenu({ user, isAdmin, requests, statusRequests, reports, notifications, onMarkNotificationsRead }) {
+function NotificationsMenu({ tab, user, isAdmin, requests, statusRequests, reports, notifications, onMarkNotificationsRead }) {
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    setOpen(false);
+  }, [tab]);
 
   const adminItems = [
     ...(requests || []).map((request) => ({
@@ -1223,6 +1244,7 @@ function SiteShell({ children, tab, setTab, isAdmin, user, profile, signOut, del
             </Button>
             <MoreMenu tab={tab} setTab={setTab} user={user} isAdmin={isAdmin} />
             <NotificationsMenu
+              tab={tab}
               user={user}
               isAdmin={isAdmin}
               requests={requests}
@@ -1232,6 +1254,7 @@ function SiteShell({ children, tab, setTab, isAdmin, user, profile, signOut, del
               onMarkNotificationsRead={markNotificationsRead}
             />
             <ProfileMenu
+              tab={tab}
               user={user}
               isAdmin={isAdmin}
               profile={profile}
