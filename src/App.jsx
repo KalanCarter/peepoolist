@@ -939,7 +939,7 @@ function PublicProfilePanel({ user, profile, onCancel, onUpdateProfile, onUpload
 }
 
 
-function MoreMenu({ tab, setTab, user, isAdmin, isAdminPlus }) {
+function MoreMenu({ tab, setTab, user, isAdmin, isAdminPlus, isOwner }) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -956,7 +956,8 @@ function MoreMenu({ tab, setTab, user, isAdmin, isAdminPlus }) {
     { tab: "contact", label: "Contact", show: true },
     { tab: "admin-messages", label: "Admin Messages", show: Boolean(isAdmin) },
     { tab: "admin", label: "Admin", show: Boolean(isAdmin) },
-    { tab: "owner", label: "Owner Tools", show: Boolean(isAdminPlus) },
+    { tab: "admin-plus", label: "Admin+ Tools", show: Boolean(isAdminPlus) },
+    { tab: "owner", label: "Owner Page", show: Boolean(isOwner) },
   ].filter((item) => item.show);
 
   return (
@@ -1365,7 +1366,7 @@ function SiteShell({ children, tab, setTab, isAdmin, isAdminPlus, isOwner, user,
             <Button variant={tab === "stats" ? "default" : "secondary"} onClick={() => setTab("stats")} className="rounded-2xl">
               Stats
             </Button>
-            <MoreMenu tab={tab} setTab={setTab} user={user} isAdmin={isAdmin} isAdminPlus={isAdminPlus} />
+            <MoreMenu tab={tab} setTab={setTab} user={user} isAdmin={isAdmin} isAdminPlus={isAdminPlus} isOwner={isOwner} />
             <NotificationsMenu
               tab={tab}
               user={user}
@@ -1438,8 +1439,16 @@ function SiteShell({ children, tab, setTab, isAdmin, isAdminPlus, isOwner, user,
           {isAdminPlus && (
             <>
               <span className="text-slate-700">•</span>
+              <button onClick={() => setTab("admin-plus")} className="font-semibold text-cyan-200 hover:text-cyan-100">
+                Admin+ Tools
+              </button>
+            </>
+          )}
+          {isOwner && (
+            <>
+              <span className="text-slate-700">•</span>
               <button onClick={() => setTab("owner")} className="font-semibold text-yellow-200 hover:text-yellow-100">
-                Owner Tools
+                Owner Page
               </button>
             </>
           )}
@@ -3056,13 +3065,163 @@ function AdminMessagesPage({ isAdmin, user, profile, messages, reads, onSendMess
 }
 
 
-function OwnerToolsPage({ user, profile, isAdminPlus, isOwner, publicProfiles, onRefreshProfiles, setTab }) {
+function AdminPlusToolsPage({ user, profile, isAdminPlus, isOwner, publicProfiles, onRefreshProfiles, setTab }) {
+  const [message, setMessage] = useState("");
+  const [roleDrafts, setRoleDrafts] = useState({});
+
+  const callerRole = "admin_plus";
+
+  const rows = useMemo(() => {
+    return [...(publicProfiles || [])].sort(
+      (a, b) => roleName(a.role).localeCompare(roleName(b.role)) || profileLabel(a).localeCompare(profileLabel(b))
+    );
+  }, [publicProfiles]);
+
+  async function saveRole(row) {
+    const targetRole = row.role || "user";
+    const roleOptions = manageableRoleOptionsFor(callerRole, targetRole);
+    const rawNextRole = roleDrafts[row.user_id] || targetRole;
+    const nextRole = roleOptions.some((item) => item.value === rawNextRole) ? rawNextRole : targetRole;
+
+    if (!canManageRole(callerRole, targetRole, nextRole)) {
+      setMessage("You cannot set that permission level for this user.");
+      return;
+    }
+
+    setMessage("Saving permission...");
+    try {
+      const { error } = await supabase.rpc("manage_user_role", {
+        p_target_user_id: row.user_id,
+        p_new_role: nextRole,
+      });
+      if (error) throw error;
+
+      await onRefreshProfiles?.();
+      setMessage(`Changed ${profileLabel(row)} to ${roleName(nextRole)}.`);
+    } catch (error) {
+      setMessage(`Could not change permission: ${error.message}`);
+    }
+  }
+
+  if (!isAdminPlus) {
+    return (
+      <InfoPageShell title="Owner tools locked" eyebrow="Permission denied">
+        <p>You need Admin+ or Owner access to view this page.</p>
+        <Button onClick={() => setTab("home")} className="rounded-2xl">Back home</Button>
+      </InfoPageShell>
+    );
+  }
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+      <section className="rounded-[2rem] border border-yellow-300/20 bg-yellow-300/10 p-6 shadow-2xl shadow-black/20 md:p-8">
+        <Badge className="mb-4 rounded-xl bg-cyan-500/20 text-cyan-200">Admin+ access</Badge>
+        <h2 className="text-4xl font-black tracking-tight sm:text-5xl md:text-7xl">Admin+ Tools</h2>
+        <p className="mt-3 max-w-3xl leading-7 text-slate-300">
+          Admin+ Tools are for elevated moderation and permission cleanup. Admin+ users can change normal accounts between Viewer, Priority, and Admin, but they cannot edit Admin+ or Owner accounts and cannot create Owners.
+        </p>
+        <div className="mt-5 flex flex-wrap gap-2">
+          <Button onClick={() => setTab("admin")} variant="secondary" className="rounded-2xl">Admin dashboard</Button>
+          <Button onClick={() => setTab("users")} variant="secondary" className="rounded-2xl">Public users</Button>
+          {isOwner && <Button onClick={() => setTab("owner")} className="rounded-2xl">Owner-only tools</Button>}
+        </div>
+      </section>
+
+      {message && (
+        <div className="rounded-2xl border border-white/10 bg-slate-950/70 p-4 text-sm font-bold text-slate-200">
+          {message}
+        </div>
+      )}
+
+      <Card className="rounded-[2rem] border-white/10 bg-slate-950/80 text-slate-100 shadow-2xl shadow-black/30">
+        <CardContent className="p-6">
+          <h3 className="text-2xl font-black">Admin+ permission manager</h3>
+          <p className="mt-1 text-sm leading-6 text-slate-400">
+            This page intentionally only uses Admin+ permission rules. Admin+ can set Viewer, Priority, or Admin for normal users. Owner-only permission and account actions are on the separate Owner page.
+          </p>
+
+          <div className="mt-5 space-y-3">
+            {rows.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-white/15 p-8 text-center text-slate-400">No profiles loaded.</div>
+            ) : (
+              rows.map((row) => {
+                const targetRole = row.role || "user";
+                const roleOptions = manageableRoleOptionsFor(callerRole, targetRole);
+                const rawDraftRole = roleDrafts[row.user_id] || targetRole;
+                const draftRole = roleOptions.some((item) => item.value === rawDraftRole) ? rawDraftRole : targetRole;
+                const lockedTarget = callerRole === "admin_plus" && ["admin_plus", "owner"].includes(targetRole);
+                const canSave = canManageRole(callerRole, targetRole, draftRole) && draftRole !== targetRole;
+                return (
+                  <div key={row.user_id} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <button onClick={() => setTab(userProfileTab(row.handle || row.user_id))} className="flex min-w-0 flex-1 gap-3 text-left">
+                        <ProfileAvatar profile={row} className="h-12 w-12 rounded-2xl" textClassName="text-lg" />
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-black text-white">{profileLabel(row)}</p>
+                            <Badge className={roleBadgeClass(row.role)}>{roleName(row.role)}</Badge>
+                          </div>
+                          <p className="mt-1 text-sm text-emerald-200">@{profileHandle(row)}</p>
+                          {row.bio && <p className="mt-2 line-clamp-2 text-sm text-slate-400">{row.bio}</p>}
+                          <p className="mt-2 break-all text-xs text-slate-500">{row.email || row.user_id}</p>
+                          {lockedTarget && (
+                            <p className="mt-2 text-xs font-bold text-yellow-200">
+                              Admin+ cannot change Admin+ or Owner accounts.
+                            </p>
+                          )}
+                        </div>
+                      </button>
+
+                      <div className="grid gap-2 sm:grid-cols-2 lg:w-[28rem]">
+                        <select
+                          value={draftRole}
+                          disabled={lockedTarget}
+                          onChange={(event) => setRoleDrafts((current) => ({ ...current, [row.user_id]: event.target.value }))}
+                          className="rounded-2xl border border-white/10 bg-slate-900 px-3 py-2 text-sm font-bold text-white outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {roleOptions.map((item) => (
+                            <option key={item.value} value={item.value} className="bg-slate-900">
+                              {item.label}
+                            </option>
+                          ))}
+                        </select>
+                        <Button onClick={() => saveRole(row)} disabled={!canSave} className="rounded-2xl">
+                          Save permission
+                        </Button>
+
+                        {isOwner && (
+                          <>
+                            <Button onClick={() => changeUserEmail(row)} variant="secondary" className="rounded-2xl">
+                              <Mail className="mr-2 h-4 w-4" /> Change email
+                            </Button>
+                            <Button onClick={() => sendPasswordReset(row)} variant="secondary" className="rounded-2xl">
+                              <KeyRound className="mr-2 h-4 w-4" /> Password reset
+                            </Button>
+                            <Button onClick={() => deleteUser(row)} variant="destructive" className="rounded-2xl sm:col-span-2" disabled={String(row.user_id) === String(user?.id)}>
+                              <Trash2 className="mr-2 h-4 w-4" /> Delete user
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+}
+
+
+
+function OwnerOnlyPage({ user, profile, isOwner, publicProfiles, onRefreshProfiles, setTab }) {
   const [authUsers, setAuthUsers] = useState([]);
   const [loadingAuthUsers, setLoadingAuthUsers] = useState(false);
   const [message, setMessage] = useState("");
   const [roleDrafts, setRoleDrafts] = useState({});
-
-  const callerRole = profile?.role || "user";
 
   const authUserMap = useMemo(() => {
     const map = new Map();
@@ -3131,12 +3290,10 @@ function OwnerToolsPage({ user, profile, isAdminPlus, isOwner, publicProfiles, o
 
   async function saveRole(row) {
     const targetRole = row.role || "user";
-    const roleOptions = manageableRoleOptionsFor(callerRole, targetRole);
-    const rawNextRole = roleDrafts[row.user_id] || targetRole;
-    const nextRole = roleOptions.some((item) => item.value === rawNextRole) ? rawNextRole : targetRole;
+    const nextRole = roleDrafts[row.user_id] || targetRole;
 
-    if (!canManageRole(callerRole, targetRole, nextRole)) {
-      setMessage("You cannot set that permission level for this user.");
+    if (!canManageRole("owner", targetRole, nextRole) || nextRole === targetRole) {
+      setMessage("Choose a different permission before saving.");
       return;
     }
 
@@ -3156,7 +3313,6 @@ function OwnerToolsPage({ user, profile, isAdminPlus, isOwner, publicProfiles, o
   }
 
   async function changeUserEmail(row) {
-    if (!isOwner) return;
     const oldEmail = row.email || "";
     const newEmail = window.prompt(`New email for ${profileLabel(row)}:`, oldEmail);
     if (!newEmail) return;
@@ -3172,7 +3328,6 @@ function OwnerToolsPage({ user, profile, isAdminPlus, isOwner, publicProfiles, o
   }
 
   async function sendPasswordReset(row) {
-    if (!isOwner) return;
     const email = row.email || window.prompt(`Email for ${profileLabel(row)} password reset:`, "");
     if (!email) return;
     const confirmed = window.confirm(`Send password reset email to ${email}?`);
@@ -3188,7 +3343,6 @@ function OwnerToolsPage({ user, profile, isAdminPlus, isOwner, publicProfiles, o
   }
 
   async function deleteUser(row) {
-    if (!isOwner) return;
     if (String(row.user_id) === String(user?.id)) {
       setMessage("You cannot delete your own owner account from here.");
       return;
@@ -3208,10 +3362,10 @@ function OwnerToolsPage({ user, profile, isAdminPlus, isOwner, publicProfiles, o
     }
   }
 
-  if (!isAdminPlus) {
+  if (!isOwner) {
     return (
-      <InfoPageShell title="Owner tools locked" eyebrow="Permission denied">
-        <p>You need Admin+ or Owner access to view this page.</p>
+      <InfoPageShell title="Owner page locked" eyebrow="Permission denied">
+        <p>This page is only for Owner accounts.</p>
         <Button onClick={() => setTab("home")} className="rounded-2xl">Back home</Button>
       </InfoPageShell>
     );
@@ -3220,19 +3374,17 @@ function OwnerToolsPage({ user, profile, isAdminPlus, isOwner, publicProfiles, o
   return (
     <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
       <section className="rounded-[2rem] border border-yellow-300/20 bg-yellow-300/10 p-6 shadow-2xl shadow-black/20 md:p-8">
-        <Badge className="mb-4 rounded-xl bg-yellow-300 text-black">{isOwner ? "Owner access" : "Admin+ access"}</Badge>
-        <h2 className="text-4xl font-black tracking-tight sm:text-5xl md:text-7xl">Owner Tools</h2>
+        <Badge className="mb-4 rounded-xl bg-yellow-300 text-black">Owner only</Badge>
+        <h2 className="text-4xl font-black tracking-tight sm:text-5xl md:text-7xl">Owner Page</h2>
         <p className="mt-3 max-w-3xl leading-7 text-slate-300">
-          Manage PeePooList permissions from the website. Admin+ can change users that are not Admin+ or Owner. Owner can manage every role and use account tools like changing emails, sending password resets, and deleting users.
+          This page is only for Owner accounts. It includes the dangerous tools: full permission changes, changing user emails, sending password reset emails, and deleting accounts.
         </p>
         <div className="mt-5 flex flex-wrap gap-2">
+          <Button onClick={() => setTab("admin-plus")} variant="secondary" className="rounded-2xl">Admin+ tools</Button>
           <Button onClick={() => setTab("admin")} variant="secondary" className="rounded-2xl">Admin dashboard</Button>
-          <Button onClick={() => setTab("users")} variant="secondary" className="rounded-2xl">Public users</Button>
-          {isOwner && (
-            <Button onClick={loadAuthUsers} disabled={loadingAuthUsers} className="rounded-2xl">
-              {loadingAuthUsers ? "Loading..." : "Reload auth users"}
-            </Button>
-          )}
+          <Button onClick={loadAuthUsers} disabled={loadingAuthUsers} className="rounded-2xl">
+            {loadingAuthUsers ? "Loading..." : "Reload auth users"}
+          </Button>
         </div>
       </section>
 
@@ -3242,11 +3394,26 @@ function OwnerToolsPage({ user, profile, isAdminPlus, isOwner, publicProfiles, o
         </div>
       )}
 
+      <section className="grid gap-4 md:grid-cols-3">
+        {[
+          ["Full permissions", "Owner can set Viewer, Priority, Admin, Admin+, or Owner for other accounts."],
+          ["Account recovery", "Owner can change emails and send password reset emails from the website."],
+          ["Danger zone", "Owner can delete users. Deleting users should only be used for spam, abuse, or test accounts."]
+        ].map(([title, body]) => (
+          <Card key={title} className="rounded-[1.7rem] border-white/10 bg-slate-950/70 text-slate-100">
+            <CardContent className="p-5">
+              <h3 className="text-xl font-black">{title}</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-400">{body}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </section>
+
       <Card className="rounded-[2rem] border-white/10 bg-slate-950/80 text-slate-100 shadow-2xl shadow-black/30">
-        <CardContent className="p-6">
-          <h3 className="text-2xl font-black">Permission manager</h3>
+        <CardContent className="p-4 sm:p-6">
+          <h3 className="text-2xl font-black">Owner account manager</h3>
           <p className="mt-1 text-sm leading-6 text-slate-400">
-            Owner can set Viewer, Priority, Admin, Admin+, or Owner. Admin+ can set Viewer, Priority, or Admin for normal users only.
+            This table intentionally includes tools that Admin+ cannot use.
           </p>
 
           <div className="mt-5 space-y-3">
@@ -3255,11 +3422,9 @@ function OwnerToolsPage({ user, profile, isAdminPlus, isOwner, publicProfiles, o
             ) : (
               rows.map((row) => {
                 const targetRole = row.role || "user";
-                const roleOptions = manageableRoleOptionsFor(callerRole, targetRole);
-                const rawDraftRole = roleDrafts[row.user_id] || targetRole;
-                const draftRole = roleOptions.some((item) => item.value === rawDraftRole) ? rawDraftRole : targetRole;
-                const lockedTarget = callerRole === "admin_plus" && ["admin_plus", "owner"].includes(targetRole);
-                const canSave = canManageRole(callerRole, targetRole, draftRole) && draftRole !== targetRole;
+                const draftRole = roleDrafts[row.user_id] || targetRole;
+                const canSave = draftRole !== targetRole && String(row.user_id) !== String(user?.id);
+
                 return (
                   <div key={row.user_id} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -3273,10 +3438,8 @@ function OwnerToolsPage({ user, profile, isAdminPlus, isOwner, publicProfiles, o
                           <p className="mt-1 text-sm text-emerald-200">@{profileHandle(row)}</p>
                           {row.bio && <p className="mt-2 line-clamp-2 text-sm text-slate-400">{row.bio}</p>}
                           <p className="mt-2 break-all text-xs text-slate-500">{row.email || row.user_id}</p>
-                          {lockedTarget && (
-                            <p className="mt-2 text-xs font-bold text-yellow-200">
-                              Admin+ cannot change Admin+ or Owner accounts.
-                            </p>
+                          {String(row.user_id) === String(user?.id) && (
+                            <p className="mt-2 text-xs font-bold text-yellow-200">Your own Owner account is protected from changes here.</p>
                           )}
                         </div>
                       </button>
@@ -3284,11 +3447,11 @@ function OwnerToolsPage({ user, profile, isAdminPlus, isOwner, publicProfiles, o
                       <div className="grid gap-2 sm:grid-cols-2 lg:w-[28rem]">
                         <select
                           value={draftRole}
-                          disabled={lockedTarget}
+                          disabled={String(row.user_id) === String(user?.id)}
                           onChange={(event) => setRoleDrafts((current) => ({ ...current, [row.user_id]: event.target.value }))}
                           className="rounded-2xl border border-white/10 bg-slate-900 px-3 py-2 text-sm font-bold text-white outline-none disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                          {roleOptions.map((item) => (
+                          {PERMISSION_ROLES.map((item) => (
                             <option key={item.value} value={item.value} className="bg-slate-900">
                               {item.label}
                             </option>
@@ -3298,19 +3461,15 @@ function OwnerToolsPage({ user, profile, isAdminPlus, isOwner, publicProfiles, o
                           Save permission
                         </Button>
 
-                        {isOwner && (
-                          <>
-                            <Button onClick={() => changeUserEmail(row)} variant="secondary" className="rounded-2xl">
-                              <Mail className="mr-2 h-4 w-4" /> Change email
-                            </Button>
-                            <Button onClick={() => sendPasswordReset(row)} variant="secondary" className="rounded-2xl">
-                              <KeyRound className="mr-2 h-4 w-4" /> Password reset
-                            </Button>
-                            <Button onClick={() => deleteUser(row)} variant="destructive" className="rounded-2xl sm:col-span-2" disabled={String(row.user_id) === String(user?.id)}>
-                              <Trash2 className="mr-2 h-4 w-4" /> Delete user
-                            </Button>
-                          </>
-                        )}
+                        <Button onClick={() => changeUserEmail(row)} variant="secondary" className="rounded-2xl">
+                          <Mail className="mr-2 h-4 w-4" /> Change email
+                        </Button>
+                        <Button onClick={() => sendPasswordReset(row)} variant="secondary" className="rounded-2xl">
+                          <KeyRound className="mr-2 h-4 w-4" /> Password reset
+                        </Button>
+                        <Button onClick={() => deleteUser(row)} variant="destructive" className="rounded-2xl sm:col-span-2" disabled={String(row.user_id) === String(user?.id)}>
+                          <Trash2 className="mr-2 h-4 w-4" /> Delete user
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -5919,12 +6078,25 @@ export default function PeePooListWebsite() {
         />
       );
     }
-    if (tab === "owner") {
+    if (tab === "admin-plus") {
       return (
-        <OwnerToolsPage
+        <AdminPlusToolsPage
           user={user}
           profile={profile}
           isAdminPlus={isAdminPlus}
+          isOwner={isOwner}
+          publicProfiles={publicProfiles}
+          onRefreshProfiles={loadPublicProfiles}
+          setTab={setTab}
+        />
+      );
+    }
+
+    if (tab === "owner") {
+      return (
+        <OwnerOnlyPage
+          user={user}
+          profile={profile}
           isOwner={isOwner}
           publicProfiles={publicProfiles}
           onRefreshProfiles={loadPublicProfiles}
