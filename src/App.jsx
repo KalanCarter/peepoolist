@@ -262,16 +262,48 @@ function ProfileAvatar({ profile, user, className = "h-10 w-10", textClassName =
   );
 }
 
+const PERMISSION_ROLES = [
+  { value: "user", label: "Viewer" },
+  { value: "priority", label: "Priority" },
+  { value: "admin", label: "Admin" },
+  { value: "admin_plus", label: "Admin+" },
+  { value: "owner", label: "Owner" },
+];
+
 function roleName(role) {
+  if (role === "owner") return "Owner";
+  if (role === "admin_plus") return "Admin+";
   if (role === "admin") return "Admin";
   if (role === "priority") return "Priority";
   return "Viewer";
 }
 
 function roleBadgeClass(role) {
+  if (role === "owner") return "rounded-xl bg-yellow-300 text-black";
+  if (role === "admin_plus") return "rounded-xl bg-cyan-500/20 text-cyan-200";
   if (role === "admin") return "rounded-xl bg-emerald-500/20 text-emerald-200";
   if (role === "priority") return "rounded-xl bg-fuchsia-500/20 text-fuchsia-200";
   return "rounded-xl bg-slate-700 text-slate-200";
+}
+
+function hasAdminAccess(role) {
+  return ["admin", "admin_plus", "owner"].includes(role);
+}
+
+function hasAdminPlusAccess(role) {
+  return ["admin_plus", "owner"].includes(role);
+}
+
+function hasOwnerAccess(role) {
+  return role === "owner";
+}
+
+function canManageRole(callerRole, targetRole, nextRole) {
+  if (callerRole === "owner") return true;
+  if (callerRole === "admin_plus") {
+    return !["admin_plus", "owner"].includes(targetRole) && ["user", "priority", "admin"].includes(nextRole);
+  }
+  return false;
 }
 
 function badgeColorClass(color = "emerald") {
@@ -892,7 +924,7 @@ function PublicProfilePanel({ user, profile, onCancel, onUpdateProfile, onUpload
 }
 
 
-function MoreMenu({ tab, setTab, user, isAdmin }) {
+function MoreMenu({ tab, setTab, user, isAdmin, isAdminPlus }) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -909,6 +941,7 @@ function MoreMenu({ tab, setTab, user, isAdmin }) {
     { tab: "contact", label: "Contact", show: true },
     { tab: "admin-messages", label: "Admin Messages", show: Boolean(isAdmin) },
     { tab: "admin", label: "Admin", show: Boolean(isAdmin) },
+    { tab: "owner", label: "Owner Tools", show: Boolean(isAdminPlus) },
   ].filter((item) => item.show);
 
   return (
@@ -1284,7 +1317,7 @@ function StatusRequestsPanel({ statusRequests, onApprove, onDeny }) {
   );
 }
 
-function SiteShell({ children, tab, setTab, isAdmin, user, profile, signOut, deleteAccount, changeEmail, changePassword, submitStatusRequest, updateProfile, uploadAvatar, requests, statusRequests, reports, notifications, adminUnreadCount, markNotificationsRead }) {
+function SiteShell({ children, tab, setTab, isAdmin, isAdminPlus, isOwner, user, profile, signOut, deleteAccount, changeEmail, changePassword, submitStatusRequest, updateProfile, uploadAvatar, requests, statusRequests, reports, notifications, adminUnreadCount, markNotificationsRead }) {
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#090d18] text-slate-100 selection:bg-yellow-300 selection:text-black">
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
@@ -1317,7 +1350,7 @@ function SiteShell({ children, tab, setTab, isAdmin, user, profile, signOut, del
             <Button variant={tab === "stats" ? "default" : "secondary"} onClick={() => setTab("stats")} className="rounded-2xl">
               Stats
             </Button>
-            <MoreMenu tab={tab} setTab={setTab} user={user} isAdmin={isAdmin} />
+            <MoreMenu tab={tab} setTab={setTab} user={user} isAdmin={isAdmin} isAdminPlus={isAdminPlus} />
             <NotificationsMenu
               tab={tab}
               user={user}
@@ -1384,6 +1417,14 @@ function SiteShell({ children, tab, setTab, isAdmin, user, profile, signOut, del
               <span className="text-slate-700">•</span>
               <button onClick={() => setTab("admin")} className="font-semibold text-slate-200 hover:text-white">
                 Admin
+              </button>
+            </>
+          )}
+          {isAdminPlus && (
+            <>
+              <span className="text-slate-700">•</span>
+              <button onClick={() => setTab("owner")} className="font-semibold text-yellow-200 hover:text-yellow-100">
+                Owner Tools
               </button>
             </>
           )}
@@ -2882,7 +2923,263 @@ function AdminMessagesPage({ isAdmin, user, profile, messages, reads, onSendMess
   );
 }
 
-function AdminDashboardPage({ isAdmin, levels, requests, statusRequests, reports, chatMessages, changelogEntries, publicProfiles, userBadges, adminMessages, adminUnreadCount, setTab, onApproveRequest, onDenyRequest, onApproveStatusRequest, onDenyStatusRequest, onResolveReport, onDismissReport, onHideChatMessage, onDeleteChangelogEntry }) {
+
+function OwnerToolsPage({ user, profile, isAdminPlus, isOwner, publicProfiles, onRefreshProfiles, setTab }) {
+  const [authUsers, setAuthUsers] = useState([]);
+  const [loadingAuthUsers, setLoadingAuthUsers] = useState(false);
+  const [message, setMessage] = useState("");
+  const [roleDrafts, setRoleDrafts] = useState({});
+
+  const callerRole = profile?.role || "user";
+
+  const authUserMap = useMemo(() => {
+    const map = new Map();
+    (authUsers || []).forEach((item) => map.set(String(item.id), item));
+    return map;
+  }, [authUsers]);
+
+  const rows = useMemo(() => {
+    return [...(publicProfiles || [])]
+      .sort((a, b) => roleName(a.role).localeCompare(roleName(b.role)) || profileLabel(a).localeCompare(profileLabel(b)))
+      .map((profileRow) => {
+        const authRow = authUserMap.get(String(profileRow.user_id));
+        return {
+          ...profileRow,
+          email: authRow?.email || "",
+          last_sign_in_at: authRow?.last_sign_in_at || "",
+          auth_created_at: authRow?.created_at || "",
+        };
+      });
+  }, [publicProfiles, authUserMap]);
+
+  async function ownerApi(action, payload = {}) {
+    if (!supabase || !user) throw new Error("Sign in first.");
+
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession();
+
+    if (sessionError || !session?.access_token) {
+      throw new Error("You need to sign in again.");
+    }
+
+    const response = await fetch("/api/owner-users", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ action, ...payload }),
+    });
+
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.message || "Owner API failed.");
+    return result;
+  }
+
+  async function loadAuthUsers() {
+    if (!isOwner) return;
+    setLoadingAuthUsers(true);
+    setMessage("");
+    try {
+      const result = await ownerApi("listUsers");
+      setAuthUsers(result.users || []);
+      setMessage(`Loaded ${result.users?.length || 0} auth users.`);
+    } catch (error) {
+      setMessage(`Could not load auth users: ${error.message}`);
+    } finally {
+      setLoadingAuthUsers(false);
+    }
+  }
+
+  useEffect(() => {
+    if (isOwner) loadAuthUsers();
+  }, [isOwner]);
+
+  async function saveRole(row) {
+    const nextRole = roleDrafts[row.user_id] || row.role || "user";
+    if (!canManageRole(callerRole, row.role || "user", nextRole)) {
+      setMessage("You cannot set that permission level for this user.");
+      return;
+    }
+
+    setMessage("Saving permission...");
+    try {
+      const { error } = await supabase.rpc("manage_user_role", {
+        p_target_user_id: row.user_id,
+        p_new_role: nextRole,
+      });
+      if (error) throw error;
+
+      await onRefreshProfiles?.();
+      setMessage(`Changed ${profileLabel(row)} to ${roleName(nextRole)}.`);
+    } catch (error) {
+      setMessage(`Could not change permission: ${error.message}`);
+    }
+  }
+
+  async function changeUserEmail(row) {
+    if (!isOwner) return;
+    const oldEmail = row.email || "";
+    const newEmail = window.prompt(`New email for ${profileLabel(row)}:`, oldEmail);
+    if (!newEmail) return;
+
+    setMessage("Changing email...");
+    try {
+      await ownerApi("updateEmail", { targetUserId: row.user_id, newEmail });
+      await loadAuthUsers();
+      setMessage("Email updated.");
+    } catch (error) {
+      setMessage(`Could not change email: ${error.message}`);
+    }
+  }
+
+  async function sendPasswordReset(row) {
+    if (!isOwner) return;
+    const email = row.email || window.prompt(`Email for ${profileLabel(row)} password reset:`, "");
+    if (!email) return;
+    const confirmed = window.confirm(`Send password reset email to ${email}?`);
+    if (!confirmed) return;
+
+    setMessage("Sending password reset...");
+    try {
+      await ownerApi("sendPasswordReset", { targetUserId: row.user_id, email });
+      setMessage("Password reset email sent.");
+    } catch (error) {
+      setMessage(`Could not send password reset: ${error.message}`);
+    }
+  }
+
+  async function deleteUser(row) {
+    if (!isOwner) return;
+    if (String(row.user_id) === String(user?.id)) {
+      setMessage("You cannot delete your own owner account from here.");
+      return;
+    }
+    const confirmed = window.confirm(`Delete ${profileLabel(row)} permanently? This removes the auth user and their profile.`);
+    if (!confirmed) return;
+    const doubleConfirmed = window.confirm("Are you completely sure? This cannot be undone.");
+    if (!doubleConfirmed) return;
+
+    setMessage("Deleting user...");
+    try {
+      await ownerApi("deleteUser", { targetUserId: row.user_id });
+      await Promise.all([loadAuthUsers(), onRefreshProfiles?.()]);
+      setMessage("User deleted.");
+    } catch (error) {
+      setMessage(`Could not delete user: ${error.message}`);
+    }
+  }
+
+  if (!isAdminPlus) {
+    return (
+      <InfoPageShell title="Owner tools locked" eyebrow="Permission denied">
+        <p>You need Admin+ or Owner access to view this page.</p>
+        <Button onClick={() => setTab("home")} className="rounded-2xl">Back home</Button>
+      </InfoPageShell>
+    );
+  }
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+      <section className="rounded-[2rem] border border-yellow-300/20 bg-yellow-300/10 p-6 shadow-2xl shadow-black/20 md:p-8">
+        <Badge className="mb-4 rounded-xl bg-yellow-300 text-black">{isOwner ? "Owner access" : "Admin+ access"}</Badge>
+        <h2 className="text-5xl font-black tracking-tight md:text-7xl">Owner Tools</h2>
+        <p className="mt-3 max-w-3xl leading-7 text-slate-300">
+          Manage PeePooList permissions from the website. Admin+ can change users that are not Admin+ or Owner. Owner can manage every role and use account tools like changing emails, sending password resets, and deleting users.
+        </p>
+        <div className="mt-5 flex flex-wrap gap-2">
+          <Button onClick={() => setTab("admin")} variant="secondary" className="rounded-2xl">Admin dashboard</Button>
+          <Button onClick={() => setTab("users")} variant="secondary" className="rounded-2xl">Public users</Button>
+          {isOwner && (
+            <Button onClick={loadAuthUsers} disabled={loadingAuthUsers} className="rounded-2xl">
+              {loadingAuthUsers ? "Loading..." : "Reload auth users"}
+            </Button>
+          )}
+        </div>
+      </section>
+
+      {message && (
+        <div className="rounded-2xl border border-white/10 bg-slate-950/70 p-4 text-sm font-bold text-slate-200">
+          {message}
+        </div>
+      )}
+
+      <Card className="rounded-[2rem] border-white/10 bg-slate-950/80 text-slate-100 shadow-2xl shadow-black/30">
+        <CardContent className="p-6">
+          <h3 className="text-2xl font-black">Permission manager</h3>
+          <p className="mt-1 text-sm leading-6 text-slate-400">
+            Owner can set Viewer, Priority, Admin, Admin+, or Owner. Admin+ can set Viewer, Priority, or Admin for normal users only.
+          </p>
+
+          <div className="mt-5 space-y-3">
+            {rows.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-white/15 p-8 text-center text-slate-400">No profiles loaded.</div>
+            ) : (
+              rows.map((row) => {
+                const draftRole = roleDrafts[row.user_id] || row.role || "user";
+                const canSave = canManageRole(callerRole, row.role || "user", draftRole);
+                return (
+                  <div key={row.user_id} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <button onClick={() => setTab(userProfileTab(row.handle || row.user_id))} className="flex min-w-0 flex-1 gap-3 text-left">
+                        <ProfileAvatar profile={row} className="h-12 w-12 rounded-2xl" textClassName="text-lg" />
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-black text-white">{profileLabel(row)}</p>
+                            <Badge className={roleBadgeClass(row.role)}>{roleName(row.role)}</Badge>
+                          </div>
+                          <p className="mt-1 text-sm text-emerald-200">@{profileHandle(row)}</p>
+                          {row.bio && <p className="mt-2 line-clamp-2 text-sm text-slate-400">{row.bio}</p>}
+                          <p className="mt-2 break-all text-xs text-slate-500">{row.email || row.user_id}</p>
+                        </div>
+                      </button>
+
+                      <div className="grid gap-2 sm:grid-cols-2 lg:w-[28rem]">
+                        <select
+                          value={draftRole}
+                          onChange={(event) => setRoleDrafts((current) => ({ ...current, [row.user_id]: event.target.value }))}
+                          className="rounded-2xl border border-white/10 bg-slate-900 px-3 py-2 text-sm font-bold text-white outline-none"
+                        >
+                          {PERMISSION_ROLES.map((item) => (
+                            <option key={item.value} value={item.value} className="bg-slate-900">
+                              {item.label}
+                            </option>
+                          ))}
+                        </select>
+                        <Button onClick={() => saveRole(row)} disabled={!canSave} className="rounded-2xl">
+                          Save permission
+                        </Button>
+
+                        {isOwner && (
+                          <>
+                            <Button onClick={() => changeUserEmail(row)} variant="secondary" className="rounded-2xl">
+                              <Mail className="mr-2 h-4 w-4" /> Change email
+                            </Button>
+                            <Button onClick={() => sendPasswordReset(row)} variant="secondary" className="rounded-2xl">
+                              <KeyRound className="mr-2 h-4 w-4" /> Password reset
+                            </Button>
+                            <Button onClick={() => deleteUser(row)} variant="destructive" className="rounded-2xl sm:col-span-2" disabled={String(row.user_id) === String(user?.id)}>
+                              <Trash2 className="mr-2 h-4 w-4" /> Delete user
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+}
+
+
+function AdminDashboardPage({ isAdmin, isAdminPlus, levels, requests, statusRequests, reports, chatMessages, changelogEntries, publicProfiles, userBadges, adminMessages, adminUnreadCount, setTab, onApproveRequest, onDenyRequest, onApproveStatusRequest, onDenyStatusRequest, onResolveReport, onDismissReport, onHideChatMessage, onDeleteChangelogEntry }) {
   if (!isAdmin) {
     return (
       <InfoPageShell title="Admin only" eyebrow="Locked">
@@ -2911,7 +3208,7 @@ function AdminDashboardPage({ isAdmin, levels, requests, statusRequests, reports
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Total levels" value={totalLevels} tone="cyan" />
         <StatCard label="Level requests" value={pendingLevelRequests.length} tone={pendingLevelRequests.length ? "yellow" : "slate"} />
-        <StatCard label="Status requests" value={(statusRequests || []).length} tone={(statusRequests || []).length ? "yellow" : "slate"} />
+        {isAdminPlus && <StatCard label="Status requests" value={(statusRequests || []).length} tone={(statusRequests || []).length ? "yellow" : "slate"} />}
         <StatCard label="Reports" value={pendingReports.length} tone={pendingReports.length ? "red" : "slate"} />
         <StatCard label="Admin messages" value={adminUnreadCount || 0} tone={adminUnreadCount ? "yellow" : "slate"} body={`${pinnedAdminMessages} pinned`} />
       </section>
@@ -2926,7 +3223,7 @@ function AdminDashboardPage({ isAdmin, levels, requests, statusRequests, reports
       </section>
 
       <RequestsPanel requests={pendingLevelRequests} onApprove={onApproveRequest} onDeny={onDenyRequest} />
-      <StatusRequestsPanel statusRequests={statusRequests || []} onApprove={onApproveStatusRequest} onDeny={onDenyStatusRequest} />
+      {isAdminPlus && <StatusRequestsPanel statusRequests={statusRequests || []} onApprove={onApproveStatusRequest} onDeny={onDenyStatusRequest} />}
       <ReportsPanel reports={pendingReports} onResolve={onResolveReport} onDismiss={onDismissReport} />
 
       <section className="grid gap-6 lg:grid-cols-2">
@@ -3965,7 +4262,9 @@ export default function PeePooListWebsite() {
   const [lastChatSentAt, setLastChatSentAt] = useState(0);
   const [lastLevelCommentSentAt, setLastLevelCommentSentAt] = useState(0);
 
-  const isAdmin = profile?.role === "admin";
+  const isAdmin = hasAdminAccess(profile?.role);
+  const isAdminPlus = hasAdminPlusAccess(profile?.role);
+  const isOwner = hasOwnerAccess(profile?.role);
   const isPriority = profile?.role === "priority";
 
   async function loadProfile(nextUser) {
@@ -4017,7 +4316,7 @@ export default function PeePooListWebsite() {
   }
 
   async function loadStatusRequests() {
-    if (!supabase || !isAdmin) {
+    if (!supabase || !isAdminPlus) {
       setStatusRequests([]);
       return;
     }
@@ -4652,13 +4951,16 @@ export default function PeePooListWebsite() {
   }
 
   async function approveStatusRequest(request) {
-    if (!supabase || !isAdmin) return;
+    if (!supabase || !isAdminPlus) {
+      setStatusMessage("Admin+ or Owner access required for permission changes.");
+      return;
+    }
 
     try {
       const role = roleFromRequestedStatus(request.requested_status);
-      const { error: profileError } = await supabase.from("profiles").upsert({
-        user_id: request.created_by,
-        role,
+      const { error: profileError } = await supabase.rpc("manage_user_role", {
+        p_target_user_id: request.created_by,
+        p_new_role: role,
       });
 
       if (profileError) throw profileError;
@@ -4680,7 +4982,7 @@ export default function PeePooListWebsite() {
   }
 
   async function denyStatusRequest(request) {
-    if (!supabase || !isAdmin) return;
+    if (!supabase || !isAdminPlus) return;
 
     try {
       const { error } = await supabase.from("status_requests").update({ status: "denied" }).eq("id", request.id);
@@ -5342,6 +5644,7 @@ export default function PeePooListWebsite() {
       return (
         <AdminDashboardPage
           isAdmin={isAdmin}
+          isAdminPlus={isAdminPlus}
           levels={levels}
           requests={requests}
           statusRequests={statusRequests}
@@ -5361,6 +5664,19 @@ export default function PeePooListWebsite() {
           onDismissReport={dismissReport}
           onHideChatMessage={hideChatMessage}
           onDeleteChangelogEntry={deleteChangelogEntry}
+        />
+      );
+    }
+    if (tab === "owner") {
+      return (
+        <OwnerToolsPage
+          user={user}
+          profile={profile}
+          isAdminPlus={isAdminPlus}
+          isOwner={isOwner}
+          publicProfiles={publicProfiles}
+          onRefreshProfiles={loadPublicProfiles}
+          setTab={setTab}
         />
       );
     }
@@ -5459,13 +5775,15 @@ export default function PeePooListWebsite() {
         setTab={setTab}
       />
     );
-  }, [tab, levels, isAdmin, user, profile, publicProfiles, userBadges, authEmail, authPassword, authMessage, requests, reports, userRequests, statusRequests, changelogEntries, chatMessages, levelComments, adminMessages, adminMessageReads, notifications, statusMessage]);
+  }, [tab, levels, isAdmin, isAdminPlus, isOwner, user, profile, publicProfiles, userBadges, authEmail, authPassword, authMessage, requests, reports, userRequests, statusRequests, changelogEntries, chatMessages, levelComments, adminMessages, adminMessageReads, notifications, statusMessage]);
 
   return (
     <SiteShell
       tab={tab}
       setTab={setTab}
       isAdmin={isAdmin}
+      isAdminPlus={isAdminPlus}
+      isOwner={isOwner}
       user={user}
       profile={profile}
       signOut={signOut}
