@@ -130,6 +130,147 @@ export default async function handler(req, res) {
       return send(res, 200, { ok: true });
     }
 
+    if (action === "updateProfile") {
+      const targetUserId = String(body.targetUserId || "");
+      const displayName = String(body.displayName || "").trim().slice(0, 40);
+      const handle = String(body.handle || "")
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9_]+/g, "")
+        .slice(0, 24);
+      const bio = String(body.bio || "").trim().slice(0, 240);
+      const avatarUrl = String(body.avatarUrl || "").trim();
+
+      if (!targetUserId) {
+        return send(res, 400, { message: "Missing target user." });
+      }
+
+      if (handle && (handle.length < 3 || handle.length > 24)) {
+        return send(res, 400, { message: "Handle must be 3 to 24 characters." });
+      }
+
+      if (handle) {
+        const { data: existing, error: existingError } = await serviceClient
+          .from("profiles")
+          .select("user_id")
+          .ilike("handle", handle)
+          .neq("user_id", targetUserId)
+          .limit(1);
+
+        if (existingError) throw existingError;
+        if (existing?.length) {
+          return send(res, 400, { message: "That handle is already taken." });
+        }
+      }
+
+      const { error } = await serviceClient
+        .from("profiles")
+        .upsert({
+          user_id: targetUserId,
+          role: "user",
+          display_name: displayName || null,
+          handle: handle || null,
+          bio: bio || null,
+          avatar_url: avatarUrl || null,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "user_id", ignoreDuplicates: false });
+
+      if (error) throw error;
+      return send(res, 200, { ok: true });
+    }
+
+    if (action === "awardBadge") {
+      const targetUserId = String(body.targetUserId || "");
+      const badgeKey = String(body.badgeKey || "").trim().toLowerCase().replace(/[^a-z0-9_-]+/g, "-").slice(0, 60);
+      const badgeLabel = String(body.badgeLabel || "").trim().slice(0, 60);
+      const badgeDescription = String(body.badgeDescription || "").trim().slice(0, 160);
+      const allowedColors = new Set(["emerald", "yellow", "cyan", "purple", "red", "slate"]);
+      const badgeColor = allowedColors.has(String(body.badgeColor || "").trim()) ? String(body.badgeColor).trim() : "yellow";
+
+      if (!targetUserId || !badgeKey || !badgeLabel) {
+        return send(res, 400, { message: "Missing badge fields." });
+      }
+
+      const { error } = await serviceClient.from("user_badges").insert({
+        user_id: targetUserId,
+        badge_key: badgeKey,
+        badge_label: badgeLabel,
+        badge_description: badgeDescription || null,
+        badge_color: badgeColor,
+        awarded_by: null,
+      });
+
+      if (error) throw error;
+      return send(res, 200, { ok: true });
+    }
+
+    if (action === "removeBadges") {
+      const targetUserId = String(body.targetUserId || "");
+      if (!targetUserId) {
+        return send(res, 400, { message: "Missing target user." });
+      }
+
+      const { error, count } = await serviceClient
+        .from("user_badges")
+        .delete({ count: "exact" })
+        .eq("user_id", targetUserId);
+
+      if (error) throw error;
+      return send(res, 200, { ok: true, badgesDeleted: count || 0 });
+    }
+
+    if (action === "hideUserContent") {
+      const targetUserId = String(body.targetUserId || "");
+      if (!targetUserId) {
+        return send(res, 400, { message: "Missing target user." });
+      }
+
+      const { error: chatError, count: chatHidden } = await serviceClient
+        .from("public_chat_messages")
+        .update({ is_hidden: true }, { count: "exact" })
+        .eq("created_by", targetUserId)
+        .eq("is_hidden", false);
+
+      if (chatError) throw chatError;
+
+      const { error: commentError, count: commentsHidden } = await serviceClient
+        .from("level_comments")
+        .update({ is_hidden: true }, { count: "exact" })
+        .eq("created_by", targetUserId)
+        .eq("is_hidden", false);
+
+      if (commentError) throw commentError;
+
+      return send(res, 200, { ok: true, chatHidden: chatHidden || 0, commentsHidden: commentsHidden || 0 });
+    }
+
+    if (action === "deleteUserRequests") {
+      const targetUserId = String(body.targetUserId || "");
+      if (!targetUserId) {
+        return send(res, 400, { message: "Missing target user." });
+      }
+
+      const { error: requestsError, count: requestsDeleted } = await serviceClient
+        .from("requests")
+        .delete({ count: "exact" })
+        .eq("created_by", targetUserId);
+
+      if (requestsError) throw requestsError;
+
+      const { error: statusError, count: statusRequestsDeleted } = await serviceClient
+        .from("status_requests")
+        .delete({ count: "exact" })
+        .eq("created_by", targetUserId);
+
+      if (statusError) throw statusError;
+
+      return send(res, 200, {
+        ok: true,
+        requestsDeleted: requestsDeleted || 0,
+        statusRequestsDeleted: statusRequestsDeleted || 0,
+      });
+    }
+
     if (action === "deleteUser") {
       const targetUserId = String(body.targetUserId || "");
       if (!targetUserId) {

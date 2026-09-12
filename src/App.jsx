@@ -3342,6 +3342,121 @@ function OwnerOnlyPage({ user, profile, isOwner, publicProfiles, onRefreshProfil
     }
   }
 
+  async function editPublicProfile(row) {
+    const displayName = window.prompt("Display name:", row.display_name || "");
+    if (displayName === null) return;
+
+    const handle = window.prompt("Handle, 3-24 letters/numbers/underscores:", row.handle || "");
+    if (handle === null) return;
+
+    const bio = window.prompt("Bio, max 240 characters:", row.bio || "");
+    if (bio === null) return;
+
+    setMessage("Updating public profile...");
+    try {
+      await ownerApi("updateProfile", {
+        targetUserId: row.user_id,
+        displayName,
+        handle,
+        bio,
+        avatarUrl: row.avatar_url || "",
+      });
+      await onRefreshProfiles?.();
+      setMessage("Public profile updated.");
+    } catch (error) {
+      setMessage(`Could not update profile: ${error.message}`);
+    }
+  }
+
+  async function clearAvatar(row) {
+    const confirmed = window.confirm(`Clear avatar for ${profileLabel(row)}?`);
+    if (!confirmed) return;
+
+    setMessage("Clearing avatar...");
+    try {
+      await ownerApi("updateProfile", {
+        targetUserId: row.user_id,
+        displayName: row.display_name || "",
+        handle: row.handle || "",
+        bio: row.bio || "",
+        avatarUrl: "",
+      });
+      await onRefreshProfiles?.();
+      setMessage("Avatar cleared.");
+    } catch (error) {
+      setMessage(`Could not clear avatar: ${error.message}`);
+    }
+  }
+
+  async function removeBadges(row) {
+    const confirmed = window.confirm(`Remove all badges from ${profileLabel(row)}?`);
+    if (!confirmed) return;
+
+    setMessage("Removing badges...");
+    try {
+      await ownerApi("removeBadges", { targetUserId: row.user_id });
+      setMessage("All badges removed.");
+    } catch (error) {
+      setMessage(`Could not remove badges: ${error.message}`);
+    }
+  }
+
+  async function awardBadge(row) {
+    const badgeLabel = window.prompt("Badge label:", "Owner Award");
+    if (!badgeLabel) return;
+
+    const badgeKey = window.prompt("Badge key, lowercase letters/numbers/dashes:", badgeLabel.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""));
+    if (!badgeKey) return;
+
+    const badgeDescription = window.prompt("Badge description:", "Awarded by the site owner.");
+    if (badgeDescription === null) return;
+
+    const badgeColor = window.prompt("Badge color: emerald, yellow, cyan, purple, red, or slate", "yellow");
+    if (!badgeColor) return;
+
+    setMessage("Awarding badge...");
+    try {
+      await ownerApi("awardBadge", {
+        targetUserId: row.user_id,
+        badgeKey,
+        badgeLabel,
+        badgeDescription,
+        badgeColor,
+      });
+      setMessage("Badge awarded.");
+    } catch (error) {
+      setMessage(`Could not award badge: ${error.message}`);
+    }
+  }
+
+  async function hideUserContent(row) {
+    const confirmed = window.confirm(`Hide all public chat messages and level comments by ${profileLabel(row)}?`);
+    if (!confirmed) return;
+
+    setMessage("Hiding user content...");
+    try {
+      const result = await ownerApi("hideUserContent", { targetUserId: row.user_id });
+      setMessage(`Hidden content. Chat: ${result.chatHidden || 0}, comments: ${result.commentsHidden || 0}.`);
+    } catch (error) {
+      setMessage(`Could not hide content: ${error.message}`);
+    }
+  }
+
+  async function deleteUserRequests(row) {
+    const confirmed = window.confirm(`Delete all list/status requests by ${profileLabel(row)}?`);
+    if (!confirmed) return;
+    const doubleConfirmed = window.confirm("This removes that user's requests from the admin queues. Continue?");
+    if (!doubleConfirmed) return;
+
+    setMessage("Deleting user requests...");
+    try {
+      const result = await ownerApi("deleteUserRequests", { targetUserId: row.user_id });
+      setMessage(`Deleted requests. List requests: ${result.requestsDeleted || 0}, status requests: ${result.statusRequestsDeleted || 0}.`);
+    } catch (error) {
+      setMessage(`Could not delete requests: ${error.message}`);
+    }
+  }
+
   async function deleteUser(row) {
     if (String(row.user_id) === String(user?.id)) {
       setMessage("You cannot delete your own owner account from here.");
@@ -3394,11 +3509,14 @@ function OwnerOnlyPage({ user, profile, isOwner, publicProfiles, onRefreshProfil
         </div>
       )}
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {[
           ["Full permissions", "Owner can set Viewer, Priority, Admin, Admin+, or Owner for other accounts."],
           ["Account recovery", "Owner can change emails and send password reset emails from the website."],
-          ["Danger zone", "Owner can delete users. Deleting users should only be used for spam, abuse, or test accounts."]
+          ["Profile control", "Owner can edit public display names, handles, bios, and clear avatars."],
+          ["Badge control", "Owner can award owner badges or remove all badges from a user."],
+          ["Content cleanup", "Owner can hide all chat messages and level comments from a user."],
+          ["Danger zone", "Owner can delete users or remove their request history when needed."]
         ].map(([title, body]) => (
           <Card key={title} className="rounded-[1.7rem] border-white/10 bg-slate-950/70 text-slate-100">
             <CardContent className="p-5">
@@ -3466,6 +3584,24 @@ function OwnerOnlyPage({ user, profile, isOwner, publicProfiles, onRefreshProfil
                         </Button>
                         <Button onClick={() => sendPasswordReset(row)} variant="secondary" className="rounded-2xl">
                           <KeyRound className="mr-2 h-4 w-4" /> Password reset
+                        </Button>
+                        <Button onClick={() => editPublicProfile(row)} variant="secondary" className="rounded-2xl">
+                          <UserCircle className="mr-2 h-4 w-4" /> Edit profile
+                        </Button>
+                        <Button onClick={() => clearAvatar(row)} variant="secondary" className="rounded-2xl">
+                          Clear avatar
+                        </Button>
+                        <Button onClick={() => awardBadge(row)} variant="secondary" className="rounded-2xl">
+                          <Award className="mr-2 h-4 w-4" /> Award badge
+                        </Button>
+                        <Button onClick={() => removeBadges(row)} variant="secondary" className="rounded-2xl">
+                          Remove badges
+                        </Button>
+                        <Button onClick={() => hideUserContent(row)} variant="secondary" className="rounded-2xl">
+                          Hide content
+                        </Button>
+                        <Button onClick={() => deleteUserRequests(row)} variant="secondary" className="rounded-2xl">
+                          Delete requests
                         </Button>
                         <Button onClick={() => deleteUser(row)} variant="destructive" className="rounded-2xl sm:col-span-2" disabled={String(row.user_id) === String(user?.id)}>
                           <Trash2 className="mr-2 h-4 w-4" /> Delete user
