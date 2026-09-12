@@ -1504,8 +1504,11 @@ function HomePage({ user, isAdmin, signIn, signUp, signInWithGoogle, signInWithG
           <CardContent className="p-7 md:p-10">
             <Badge className="mb-5 rounded-xl bg-yellow-300 text-black">Geometry Dash challenge rankings</Badge>
             <h2 className="text-4xl font-black leading-tight tracking-tight md:text-6xl">A Geometry Dash level list for PeePooList rankings.</h2>
-            <p className="mt-5 max-w-2xl text-lg text-slate-300">
-              PeePooList ranks Geometry Dash levels in two categories: possible levels on <b>The Pooplist</b> and impossible levels on <b>The Peelist</b>. Browse the ranked lists, submit change requests, check updates, and talk about the placements.
+            <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-300">
+              PeePooList is an independent parody ranking site for Geometry Dash challenge levels. It separates levels into two public lists: <b>The Pooplist</b> for levels treated as possible and <b>The Peelist</b> for levels treated as impossible, unfinished, joke-verified, or not reasonably confirmed.
+            </p>
+            <p className="mt-4 max-w-2xl text-base leading-7 text-slate-400">
+              The site is built around browsing placements, reading list information, checking updates, submitting corrections, and keeping a record of what changed. It is not an official Demonlist, not affiliated with RobTop Games, and not meant to be used as serious competitive authority.
             </p>
 
             <div className="mt-7 grid gap-3 sm:grid-cols-2">
@@ -1553,6 +1556,106 @@ function HomePage({ user, isAdmin, signIn, signUp, signInWithGoogle, signInWithG
             <p className="mt-2 text-4xl font-black text-white">{value}</p>
             <p className="mt-1 text-sm text-slate-400">{body}</p>
           </button>
+        ))}
+      </section>
+
+      <section className="grid gap-6 lg:grid-cols-[1fr_.9fr]">
+        <Card className="rounded-[2rem] border-white/10 bg-slate-950/80 text-slate-100 shadow-2xl shadow-black/30">
+          <CardContent className="space-y-5 p-6 leading-7 text-slate-300 md:p-8">
+            <Badge className="rounded-xl bg-emerald-500/20 text-emerald-200">What this site is</Badge>
+            <h3 className="text-3xl font-black text-white">A public home for PeePooList level rankings.</h3>
+            <p>
+              PeePooList is meant to make the list easier to understand without needing to dig through random messages, screenshots, or private notes. Each public level card can show its rank, list type, creator, verifier, thumbnail, level link, comments, reports, and requested changes.
+            </p>
+            <p>
+              The main goal is simple: visitors should be able to see what is currently ranked, why a level is on a list, and where to send a correction if something looks wrong. The site also keeps updates, public profiles, badges, and chat separate from the actual ranked lists so the list pages stay readable.
+            </p>
+            <p>
+              Because this is a parody site, the rankings are not official Geometry Dash records. Placements are for entertainment, organization, and community discussion, not for drama or serious competitive rulings.
+            </p>
+          </CardContent>
+        </Card>
+
+        <div className="grid gap-4">
+          <Card className="rounded-[2rem] border-[#c0ffbf]/25 bg-[#c0ffbf]/10 text-slate-100">
+            <CardContent className="p-6">
+              <h3 className="text-2xl font-black">The Pooplist</h3>
+              <p className="mt-3 leading-7 text-slate-300">
+                The Pooplist is for levels that are treated as possible. These can include levels with a verifier, completion proof, strong evidence, or enough review history for the site admin to place them on the possible side of the rankings.
+              </p>
+              <Button onClick={() => setTab("pooplist")} variant="secondary" className="mt-5 rounded-2xl">
+                Read The Pooplist
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-[2rem] border-cyan-300/25 bg-cyan-300/10 text-slate-100">
+            <CardContent className="p-6">
+              <h3 className="text-2xl font-black">The Peelist</h3>
+              <p className="mt-3 leading-7 text-slate-300">
+                The Peelist is for levels that are treated as impossible, not reasonably verified, unfinished, or too questionable for the possible list. It gives those levels a place without mixing them into confirmed possible placements.
+              </p>
+              <Button onClick={() => setTab("peelist")} variant="secondary" className="mt-5 rounded-2xl">
+                Read The Peelist
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-3">
+        {[
+          ["1", "Browse the lists", "Start with The Pooplist or The Peelist. Each placement is meant to show the level name, creator, verifier/status, rank, thumbnail, and a link when one is available."],
+          ["2", "Open level pages", "Level detail pages give more room for comments, reports, share links, placement context, and related site information so the list pages do not have to hold everything at once."],
+          ["3", "Submit corrections", "Signed-in users can request adds, removals, edits, moves, and reports. Requests go to admin review before they change public rankings."]
+        ].map(([number, title, body]) => (
+          <Card key={title} className="rounded-[1.7rem] border-white/10 bg-white/[0.04] text-slate-100">
+            <CardContent className="p-6">
+              <div className="mb-4 grid h-11 w-11 place-items-center rounded-2xl bg-white text-xl font-black text-slate-950">{number}</div>
+              <h3 className="text-2xl font-black">{title}</h3>
+              <p className="mt-3 leading-7 text-slate-400">{body}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </section>
+
+      <section className="rounded-[2rem] border border-white/10 bg-slate-950/70 p-6 text-slate-300 shadow-2xl shadow-black/20 md:p-8">
+        <Badge className="rounded-xl bg-yellow-300/20 text-yellow-100">How rankings are handled</Badge>
+        <div className="mt-5 grid gap-6 lg:grid-cols-2">
+          <div className="space-y-4 leading-7">
+            <h3 className="text-3xl font-black text-white">Placements are reviewed before they become public changes.</h3>
+            <p>
+              A request is not supposed to instantly rewrite the list. When a user submits a level add, removal, move, edit, thumbnail change, broken link report, or other correction, it goes into a review queue. That makes it easier to avoid spam, joke edits, duplicate levels, and random changes that would make the rankings confusing.
+            </p>
+            <p>
+              A good request should include enough information to understand what needs to change. Useful details can include the level name, creator, verifier, level link, evidence, reason for the move, or what part of the card is wrong.
+            </p>
+          </div>
+          <div className="space-y-4 leading-7">
+            <h3 className="text-3xl font-black text-white">The lists are public, but moderation still matters.</h3>
+            <p>
+              PeePooList has public comments, chat, profiles, avatars, reports, and badges. Those features are meant to make the site more active, but they are separate from the actual ranking decision. Spam, bad thumbnails, broken links, private information, or abusive content can be removed.
+            </p>
+            <p>
+              The safest way to use the site is to keep submissions about Geometry Dash levels, avoid personal information, and use the report tools when something on a public page looks wrong.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-2">
+        {[
+          ["Is PeePooList official?", "No. PeePooList is an independent parody website. It is not an official Geometry Dash Demonlist, not run by RobTop Games, and not intended to settle serious ranking arguments."],
+          ["Can I submit a level?", "Yes. Signed-in users can submit requests for additions, removals, edits, and reports. Admin review is used so public pages do not instantly change from spam or unfinished submissions."],
+          ["Why are there two lists?", "The two-list setup keeps possible and impossible/questionable levels separate. That makes it easier to browse confirmed-style placements without deleting impossible or joke levels from the site."],
+          ["What should I report?", "Reports are useful for broken level links, bad thumbnails, wrong creators, wrong verifiers, duplicate entries, inappropriate content, or anything that makes a public level page misleading."]
+        ].map(([question, answer]) => (
+          <Card key={question} className="rounded-[1.7rem] border-white/10 bg-slate-950/80 text-slate-100">
+            <CardContent className="p-6">
+              <h3 className="text-xl font-black">{question}</h3>
+              <p className="mt-3 leading-7 text-slate-400">{answer}</p>
+            </CardContent>
+          </Card>
         ))}
       </section>
 
@@ -1640,9 +1743,9 @@ function HomePage({ user, isAdmin, signIn, signUp, signInWithGoogle, signInWithG
 
       <section className="grid gap-4 md:grid-cols-3">
         {[
-          ["💩", "Pooplist", "Ranked levels that are considered possible."],
-          ["💧", "Peelist", "Ranked levels that are considered impossible."],
-          ["🧻", "Requests", "Signed-in users can suggest additions, removals, reports, and edits for admin review."],
+          ["💩", "Pooplist", "Possible-side placements, level cards, thumbnails, verifier names, creator names, and detail pages for levels the site treats as beatable or confirmable."],
+          ["💧", "Peelist", "Impossible-side placements for levels that are not reasonably verified, are unfinished, or are better kept separate from the possible ranking list."],
+          ["🧻", "Requests", "A review system for additions, removals, ranking moves, bad links, incorrect thumbnails, wrong credits, and other changes that should not update instantly."],
         ].map(([emoji, title, body]) => (
           <Card key={title} className="rounded-[1.7rem] border-white/10 bg-white/[0.04] text-slate-100">
             <CardContent className="p-6">
@@ -1658,6 +1761,9 @@ function HomePage({ user, isAdmin, signIn, signUp, signInWithGoogle, signInWithG
         <h3 className="text-xl font-black text-white">Safety and moderation</h3>
         <p className="mt-2 text-sm leading-6">
           Level editing, reports, comments, profiles, and chat are protected by Supabase Auth and database Row Level Security. New chat messages and level comments also have cooldown limits to slow down spam.
+        </p>
+        <p className="mt-3 text-sm leading-6">
+          Public features should stay focused on Geometry Dash levels and PeePooList discussion. The goal is to keep list pages useful for visitors while giving signed-in users a way to correct mistakes instead of turning every page into a random message board.
         </p>
         <p className="mt-3 text-sm text-slate-400">Pending requests visible to admins: <span className="font-bold text-white">{requestCount}</span></p>
       </section>
