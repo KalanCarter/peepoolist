@@ -306,6 +306,21 @@ function canManageRole(callerRole, targetRole, nextRole) {
   return false;
 }
 
+function manageableRoleOptionsFor(callerRole, targetRole) {
+  if (callerRole === "owner") return PERMISSION_ROLES;
+
+  if (callerRole === "admin_plus") {
+    if (["admin_plus", "owner"].includes(targetRole)) {
+      return PERMISSION_ROLES.filter((item) => item.value === targetRole);
+    }
+
+    return PERMISSION_ROLES.filter((item) => ["user", "priority", "admin"].includes(item.value));
+  }
+
+  return PERMISSION_ROLES.filter((item) => item.value === targetRole);
+}
+
+
 function badgeColorClass(color = "emerald") {
   const colors = {
     emerald: "border-emerald-300/30 bg-emerald-500/10 text-emerald-100",
@@ -1544,7 +1559,7 @@ function HomePage({ user, isAdmin, signIn, signUp, signInWithGoogle, signInWithG
         <Card className="overflow-hidden rounded-[2rem] border-white/10 bg-white/[0.04] text-slate-100 shadow-2xl shadow-black/30">
           <CardContent className="p-7 md:p-10">
             <Badge className="mb-5 rounded-xl bg-yellow-300 text-black">Geometry Dash challenge rankings</Badge>
-            <h2 className="text-4xl font-black leading-tight tracking-tight md:text-6xl">A Geometry Dash level list for PeePooList rankings.</h2>
+            <h2 className="text-3xl font-black leading-tight tracking-tight sm:text-4xl md:text-6xl">A Geometry Dash level list for PeePooList rankings.</h2>
             <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-300">
               PeePooList is an independent parody ranking site for Geometry Dash challenge levels. It separates levels into two public lists: <b>The Pooplist</b> for levels treated as possible and <b>The Peelist</b> for levels treated as impossible, unfinished, joke-verified, or not reasonably confirmed.
             </p>
@@ -1843,19 +1858,52 @@ function InfoPageShell({ title, eyebrow, children }) {
   );
 }
 
+
 function AboutPage() {
   return (
     <InfoPageShell title="About PeePooList" eyebrow="About">
       <p>
-        PeePooList is a parody Geometry Dash ranking website. It organizes levels into two joke categories:
-        <b className="text-white"> The Pooplist</b> for possible levels and <b className="text-white">The Peelist</b> for impossible levels.
+        PeePooList is an independent parody ranking website for Geometry Dash challenge levels. It organizes levels into two joke categories:
+        <b className="text-white"> The Pooplist</b> for possible or reasonably confirmable levels and <b className="text-white"> The Peelist</b> for impossible, unverified, unfinished, or questionable levels.
       </p>
       <p>
-        The site lets visitors browse rankings and lets signed-in users submit level additions, removals, or edits for admin review.
+        The site exists because level lists can become confusing when placements, corrections, thumbnails, links, verifier names, creator names, and joke submissions are spread across chats or old messages. PeePooList gives those entries a public place where visitors can browse rankings and see what is currently listed.
       </p>
-      <p>
-        PeePooList is not an official Geometry Dash Demonlist, RobTop Games website, or competitive authority. It is made for entertainment.
-      </p>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        {[
+          ["The Pooplist", "The possible-side list is for entries that the site treats as beatable, confirmable, or supported well enough to rank on the possible side."],
+          ["The Peelist", "The impossible-side list is for entries that are not reasonably verified, are unfinished, are known as impossible, or need to stay separate from possible placements."],
+          ["Requests", "Signed-in users can submit additions, removals, edits, moves, reports, and corrections. Requests go through admin review before changing public pages."],
+          ["Profiles", "Users can make public profiles with handles, bios, avatars, badges, and achievements. Public profile features are separate from list authority."]
+        ].map(([title, body]) => (
+          <div key={title} className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
+            <h3 className="text-xl font-black text-white">{title}</h3>
+            <p className="mt-2 text-sm leading-6 text-slate-400">{body}</p>
+          </div>
+        ))}
+      </div>
+
+      <div>
+        <h3 className="text-2xl font-black text-white">What PeePooList is not</h3>
+        <p className="mt-2">
+          PeePooList is not an official Geometry Dash Demonlist, not affiliated with RobTop Games, and not a serious competitive authority. The site is made for entertainment, organization, and community-style discussion around a custom ranking concept.
+        </p>
+      </div>
+
+      <div>
+        <h3 className="text-2xl font-black text-white">How changes are handled</h3>
+        <p className="mt-2">
+          Public ranking changes are not supposed to happen instantly from random submissions. Admin review helps prevent spam, duplicate entries, misleading thumbnails, fake verifiers, broken links, and unfinished requests from changing the list before they are checked.
+        </p>
+      </div>
+
+      <div>
+        <h3 className="text-2xl font-black text-white">User-submitted content</h3>
+        <p className="mt-2">
+          PeePooList includes user-submitted requests, comments, reports, chat messages, thumbnails, profile bios, and badges. Those features are meant to support the public rankings, not replace them. Content that is abusive, unsafe, private, misleading, or unrelated to the site can be removed.
+        </p>
+      </div>
     </InfoPageShell>
   );
 }
@@ -1924,52 +1972,104 @@ function PrivacyPolicyPage() {
   );
 }
 
+
 function ContactPage() {
   return (
     <InfoPageShell title="Contact" eyebrow="Contact">
       <p>
-        For PeePooList questions, bug reports, privacy questions, or site issues, email:
+        For PeePooList questions, bug reports, privacy questions, account issues, or site problems, email:
       </p>
       <p>
         <a className="break-words text-2xl font-black text-emerald-200 hover:text-emerald-100" href="mailto:peepoolistvercelapp@gmail.com">
           peepoolistvercelapp@gmail.com
         </a>
       </p>
-      <p>
-        For level changes, signed-in users should use the request and edit buttons on The Pooplist or The Peelist pages.
-      </p>
+
+      <div>
+        <h3 className="text-2xl font-black text-white">For level changes</h3>
+        <p className="mt-2">
+          The fastest way to request a level change is to sign in and use the request, edit, or report buttons on The Pooplist, The Peelist, or a level detail page. That keeps the level name, list type, rank, creator, verifier, link, and reason attached to the request.
+        </p>
+      </div>
+
+      <div>
+        <h3 className="text-2xl font-black text-white">What to include</h3>
+        <p className="mt-2">
+          Helpful messages include the page you were on, the level name, what looked wrong, what you expected to happen, and any safe public evidence that explains the issue. Do not send private information, passwords, copyrighted files you do not own, or unsafe links.
+        </p>
+      </div>
+
+      <div>
+        <h3 className="text-2xl font-black text-white">For account problems</h3>
+        <p className="mt-2">
+          If you cannot sign in, need help with a profile issue, or think your account information is wrong, include the email address used for your PeePooList account. Do not email your password.
+        </p>
+      </div>
     </InfoPageShell>
   );
 }
 
+
 function RulesPage() {
   return (
     <InfoPageShell title="List Rules" eyebrow="Rules">
+      <p>
+        These rules explain how PeePooList pages should be used. They are written to keep the public list pages readable, reduce spam, and make requests easier to review.
+      </p>
+
       <div>
-        <h3 className="text-xl font-black text-white">What the lists mean</h3>
+        <h3 className="text-2xl font-black text-white">What the lists mean</h3>
         <p className="mt-2">
-          <b className="text-white">The Pooplist</b> is for levels that are treated as possible. <b className="text-white">The Peelist</b> is for levels that are treated as impossible or not reasonably verified.
+          <b className="text-white">The Pooplist</b> is for levels that are treated as possible, beatable, or reasonably confirmable. <b className="text-white">The Peelist</b> is for levels that are treated as impossible, unfinished, unverified, joke-verified, or too questionable for the possible list.
+        </p>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        {[
+          ["Good add requests", "A good add request should include the level name, creator, verifier or status, level link when available, suggested placement, and a clear reason for why it belongs on that list."],
+          ["Good edit requests", "A good edit request should clearly say what is wrong and what should replace it, such as a corrected creator name, verifier name, thumbnail, link, rank, or list type."],
+          ["Good reports", "A good report should explain whether the problem is a broken link, bad thumbnail, wrong information, duplicate level, inappropriate content, spam, or something else."],
+          ["Bad requests", "Requests may be denied if they are empty, spammy, unrelated, impossible to understand, abusive, private, unsafe, duplicated, or missing enough information to review."]
+        ].map(([title, body]) => (
+          <div key={title} className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
+            <h3 className="text-xl font-black text-white">{title}</h3>
+            <p className="mt-2 text-sm leading-6 text-slate-400">{body}</p>
+          </div>
+        ))}
+      </div>
+
+      <div>
+        <h3 className="text-2xl font-black text-white">Placement decisions</h3>
+        <p className="mt-2">
+          Placements are handled by the site admin or higher permission levels. PeePooList is a parody site, so placements are not official competitive rulings. Ranking changes can depend on available evidence, current site organization, duplicate entries, and whether the entry belongs on the possible or impossible side.
         </p>
       </div>
 
       <div>
-        <h3 className="text-xl font-black text-white">Submitting changes</h3>
+        <h3 className="text-2xl font-black text-white">Thumbnail and link rules</h3>
         <p className="mt-2">
-          Signed-in users can submit additions, removals, and edits. Requests are reviewed before they change the public lists.
+          Thumbnails and links should be safe, relevant to the level, and not misleading. Do not submit malware, shock content, hateful content, sexual content, private information, impersonation, or images you do not have permission to use. Broken or unsafe links should be reported.
         </p>
       </div>
 
       <div>
-        <h3 className="text-xl font-black text-white">Allowed content</h3>
+        <h3 className="text-2xl font-black text-white">Comments, chat, and profiles</h3>
         <p className="mt-2">
-          Submissions should be about Geometry Dash levels. Do not submit private information, malware links, shock content, hateful content, sexual content, or thumbnails you do not have permission to use.
+          Public comments, chat messages, usernames, bios, and avatars should stay related to PeePooList or Geometry Dash discussion. Spam, harassment, private information, unsafe links, hateful content, and attempts to bypass moderation can be removed.
         </p>
       </div>
 
       <div>
-        <h3 className="text-xl font-black text-white">Placement decisions</h3>
+        <h3 className="text-2xl font-black text-white">Admin and permission rules</h3>
         <p className="mt-2">
-          Rankings are handled by the site admin. PeePooList is a parody site, so placements are not official competitive rulings.
+          Admin tools are for maintaining the public lists, reviewing reports, posting updates, managing comments, and keeping the site usable. Admin+ and Owner permissions should only be used for trusted account and permission management.
+        </p>
+      </div>
+
+      <div>
+        <h3 className="text-2xl font-black text-white">Parody disclaimer</h3>
+        <p className="mt-2">
+          PeePooList is made for entertainment and organization. Do not treat it as an official Geometry Dash authority, a RobTop Games website, or a guaranteed source for serious competitive records.
         </p>
       </div>
     </InfoPageShell>
@@ -2312,8 +2412,24 @@ function ChangelogPage({ entries, chatMessages, user, isAdmin, onAddEntry, onDel
     <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
       <section className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-6 shadow-2xl shadow-black/20 md:p-8">
         <Badge className="mb-4 rounded-xl bg-cyan-500/20 text-cyan-200">Updates and chat</Badge>
-        <h2 className="text-5xl font-black tracking-tight md:text-7xl">Changelog</h2>
+        <h2 className="text-4xl font-black tracking-tight sm:text-5xl md:text-7xl">Changelog</h2>
         <p className="mt-3 max-w-2xl text-slate-300">Public updates for site changes, list changes, and a simple signed-in public chat.</p>
+      </section>
+
+
+      <section className="grid gap-4 md:grid-cols-3">
+        {[
+          ["Site updates", "Changelog posts explain new PeePooList features, design changes, content updates, and fixes that affect how visitors use the site."],
+          ["List changes", "Level-related changelog posts can document important adds, removals, edits, or ranking changes so updates are easier to follow later."],
+          ["Public chat", "The chat is for short signed-in discussion. It should stay clean, avoid private information, and remain separate from official list requests."]
+        ].map(([title, body]) => (
+          <Card key={title} className="rounded-[1.7rem] border-white/10 bg-slate-950/70 text-slate-100">
+            <CardContent className="p-6">
+              <h3 className="text-2xl font-black">{title}</h3>
+              <p className="mt-3 leading-7 text-slate-400">{body}</p>
+            </CardContent>
+          </Card>
+        ))}
       </section>
 
       {isAdmin && (
@@ -2450,11 +2566,11 @@ function StatCard({ label, value, body, tone = "slate" }) {
   };
 
   return (
-    <Card className={cn("rounded-[1.7rem] text-slate-100", tones[tone] || tones.slate)}>
-      <CardContent className="p-5">
-        <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate-400">{label}</p>
-        <p className="mt-2 text-4xl font-black text-white">{value}</p>
-        {body && <p className="mt-2 text-sm leading-6 text-slate-400">{body}</p>}
+    <Card className={cn("rounded-[1.35rem] text-slate-100 sm:rounded-[1.7rem]", tones[tone] || tones.slate)}>
+      <CardContent className="p-4 sm:p-5">
+        <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400 sm:text-xs sm:tracking-[0.24em]">{label}</p>
+        <p className="mt-1.5 text-3xl font-black text-white sm:mt-2 sm:text-4xl">{value}</p>
+        {body && <p className="mt-1.5 text-xs leading-5 text-slate-400 sm:mt-2 sm:text-sm sm:leading-6">{body}</p>}
       </CardContent>
     </Card>
   );
@@ -2506,45 +2622,45 @@ function UsersPage({ publicProfiles, userBadges, chatMessages, levelComments, se
 
   const badgeLeaders = [...profiles].sort((a, b) => b.badgeCount - a.badgeCount).slice(0, 5);
   const activityLeaders = [...profiles].sort((a, b) => b.activityCount - a.activityCount).slice(0, 5);
-  const adminProfiles = profiles.filter((profile) => profile.role === "admin");
+  const adminProfiles = profiles.filter((profile) => hasAdminAccess(profile.role));
   const priorityProfiles = profiles.filter((profile) => profile.role === "priority");
 
   return (
-    <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-      <section className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-6 shadow-2xl shadow-black/20 md:p-8">
+    <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="space-y-4 sm:space-y-6">
+      <section className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4 shadow-2xl shadow-black/20 sm:rounded-[2rem] sm:p-6 md:p-8">
         <Badge className="mb-4 rounded-xl bg-emerald-500/20 text-emerald-200">Community</Badge>
-        <h2 className="text-5xl font-black tracking-tight md:text-7xl">Users</h2>
-        <p className="mt-3 max-w-2xl text-slate-300">
+        <h2 className="text-4xl font-black tracking-tight sm:text-5xl md:text-7xl">Users</h2>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300 sm:mt-3 sm:text-base sm:leading-7">
           Browse PeePooList profiles, handles, bios, badges, achievements, and community activity.
         </p>
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
         <StatCard label="Public profiles" value={profiles.length} tone="emerald" body="Profiles currently visible." />
         <StatCard label="Admins" value={adminProfiles.length} tone="yellow" body="Users with admin access." />
         <StatCard label="Priority users" value={priorityProfiles.length} tone="purple" body="Users with priority request status." />
         <StatCard label="Badges awarded" value={(userBadges || []).length} tone="cyan" body="Custom admin-awarded badges." />
       </section>
 
-      <section className="grid gap-6 lg:grid-cols-2">
-        <Card className="rounded-[2rem] border-white/10 bg-slate-950/80 text-slate-100 shadow-2xl shadow-black/30">
-          <CardContent className="p-6">
-            <h3 className="text-2xl font-black">Badge leaderboard</h3>
-            <p className="mt-1 text-sm text-slate-400">Users with the most custom badges.</p>
-            <div className="mt-4 space-y-3">
+      <section className="grid gap-4 lg:grid-cols-2 lg:gap-6">
+        <Card className="rounded-[1.5rem] border-white/10 bg-slate-950/80 text-slate-100 shadow-2xl shadow-black/30 sm:rounded-[2rem]">
+          <CardContent className="p-4 sm:p-6">
+            <h3 className="text-xl font-black sm:text-2xl">Badge leaderboard</h3>
+            <p className="mt-1 text-xs leading-5 text-slate-400 sm:text-sm">Users with the most custom badges.</p>
+            <div className="mt-3 space-y-2.5 sm:mt-4 sm:space-y-3">
               {badgeLeaders.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-white/15 p-6 text-center text-slate-500">No users yet.</div>
+                <div className="rounded-2xl border border-dashed border-white/15 p-5 text-center text-sm text-slate-500 sm:p-6">No users yet.</div>
               ) : (
                 badgeLeaders.map((profile, index) => (
-                  <button key={profile.user_id} onClick={() => setTab(userProfileTab(profile.handle || profile.user_id))} className="flex w-full items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-left transition hover:bg-white/[0.07]">
+                  <button key={profile.user_id} onClick={() => setTab(userProfileTab(profile.handle || profile.user_id))} className="flex w-full items-center justify-between gap-2 rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-left transition hover:bg-white/[0.07] sm:gap-3 sm:p-4">
                     <div className="flex min-w-0 items-center gap-3">
-                      <ProfileAvatar profile={profile} className="h-11 w-11" />
+                      <ProfileAvatar profile={profile} className="h-9 w-9 sm:h-11 sm:w-11" />
                       <div className="min-w-0">
-                        <p className="truncate font-black text-white">#{index + 1} {profile.display_name || profile.handle || "Unnamed user"}</p>
-                        <p className="truncate text-sm text-slate-500">{profile.handle ? `@${profile.handle}` : profile.user_id}</p>
+                        <p className="truncate text-sm font-black text-white sm:text-base">#{index + 1} {profile.display_name || profile.handle || "Unnamed user"}</p>
+                        <p className="truncate text-xs text-slate-500 sm:text-sm">{profile.handle ? `@${profile.handle}` : profile.user_id}</p>
                       </div>
                     </div>
-                    <Badge className="shrink-0 rounded-xl bg-purple-500/20 text-purple-200">{profile.badgeCount} badge{profile.badgeCount === 1 ? "" : "s"}</Badge>
+                    <Badge className="shrink-0 rounded-xl bg-purple-500/20 text-[11px] text-purple-200 sm:text-xs">{profile.badgeCount} badge{profile.badgeCount === 1 ? "" : "s"}</Badge>
                   </button>
                 ))
               )}
@@ -2552,24 +2668,24 @@ function UsersPage({ publicProfiles, userBadges, chatMessages, levelComments, se
           </CardContent>
         </Card>
 
-        <Card className="rounded-[2rem] border-white/10 bg-slate-950/80 text-slate-100 shadow-2xl shadow-black/30">
-          <CardContent className="p-6">
-            <h3 className="text-2xl font-black">Activity leaderboard</h3>
-            <p className="mt-1 text-sm text-slate-400">Visible chat messages plus level comments.</p>
-            <div className="mt-4 space-y-3">
+        <Card className="rounded-[1.5rem] border-white/10 bg-slate-950/80 text-slate-100 shadow-2xl shadow-black/30 sm:rounded-[2rem]">
+          <CardContent className="p-4 sm:p-6">
+            <h3 className="text-xl font-black sm:text-2xl">Activity leaderboard</h3>
+            <p className="mt-1 text-xs leading-5 text-slate-400 sm:text-sm">Visible chat messages plus level comments.</p>
+            <div className="mt-3 space-y-2.5 sm:mt-4 sm:space-y-3">
               {activityLeaders.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-white/15 p-6 text-center text-slate-500">No user activity yet.</div>
+                <div className="rounded-2xl border border-dashed border-white/15 p-5 text-center text-sm text-slate-500 sm:p-6">No user activity yet.</div>
               ) : (
                 activityLeaders.map((profile, index) => (
-                  <button key={profile.user_id} onClick={() => setTab(userProfileTab(profile.handle || profile.user_id))} className="flex w-full items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-left transition hover:bg-white/[0.07]">
+                  <button key={profile.user_id} onClick={() => setTab(userProfileTab(profile.handle || profile.user_id))} className="flex w-full items-center justify-between gap-2 rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-left transition hover:bg-white/[0.07] sm:gap-3 sm:p-4">
                     <div className="flex min-w-0 items-center gap-3">
-                      <ProfileAvatar profile={profile} className="h-11 w-11" />
+                      <ProfileAvatar profile={profile} className="h-9 w-9 sm:h-11 sm:w-11" />
                       <div className="min-w-0">
-                        <p className="truncate font-black text-white">#{index + 1} {profile.display_name || profile.handle || "Unnamed user"}</p>
-                        <p className="truncate text-sm text-slate-500">{profile.chatCount} chat · {profile.commentCount} comments</p>
+                        <p className="truncate text-sm font-black text-white sm:text-base">#{index + 1} {profile.display_name || profile.handle || "Unnamed user"}</p>
+                        <p className="truncate text-xs text-slate-500 sm:text-sm">{profile.chatCount} chat · {profile.commentCount} comments</p>
                       </div>
                     </div>
-                    <Badge className="shrink-0 rounded-xl bg-cyan-500/20 text-cyan-200">{profile.activityCount} total</Badge>
+                    <Badge className="shrink-0 rounded-xl bg-cyan-500/20 text-[11px] text-cyan-200 sm:text-xs">{profile.activityCount} total</Badge>
                   </button>
                 ))
               )}
@@ -2578,15 +2694,15 @@ function UsersPage({ publicProfiles, userBadges, chatMessages, levelComments, se
         </Card>
       </section>
 
-      <Card className="rounded-[2rem] border-white/10 bg-slate-950/80 text-slate-100 shadow-2xl shadow-black/30">
-        <CardContent className="p-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <Card className="rounded-[1.5rem] border-white/10 bg-slate-950/80 text-slate-100 shadow-2xl shadow-black/30 sm:rounded-[2rem]">
+        <CardContent className="p-4 sm:p-6">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <h3 className="text-2xl font-black">All users</h3>
-              <p className="mt-1 text-sm text-slate-400">Search profiles by name, handle, bio, or role.</p>
+              <h3 className="text-xl font-black sm:text-2xl">All users</h3>
+              <p className="mt-1 text-xs leading-5 text-slate-400 sm:text-sm">Search profiles by name, handle, bio, or role.</p>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-[minmax(220px,1fr)_190px] lg:w-[560px]">
+            <div className="grid gap-2 sm:grid-cols-[minmax(220px,1fr)_190px] sm:gap-3 lg:w-[560px]">
               <Input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
@@ -2608,9 +2724,9 @@ function UsersPage({ publicProfiles, userBadges, chatMessages, levelComments, se
             </div>
           </div>
 
-          <div className="mt-5 grid gap-4 md:grid-cols-2">
+          <div className="mt-4 grid gap-3 sm:gap-4 md:grid-cols-2">
             {filteredProfiles.length === 0 ? (
-              <div className="md:col-span-2 rounded-2xl border border-dashed border-white/15 p-8 text-center text-slate-500">
+              <div className="rounded-2xl border border-dashed border-white/15 p-6 text-center text-sm text-slate-500 md:col-span-2 sm:p-8">
                 No users matched that search.
               </div>
             ) : (
@@ -2618,25 +2734,25 @@ function UsersPage({ publicProfiles, userBadges, chatMessages, levelComments, se
                 <button
                   key={profile.user_id}
                   onClick={() => setTab(userProfileTab(profile.handle || profile.user_id))}
-                  className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-5 text-left transition hover:-translate-y-0.5 hover:bg-white/[0.07]"
+                  className="rounded-[1.25rem] border border-white/10 bg-white/[0.04] p-3.5 text-left transition hover:-translate-y-0.5 hover:bg-white/[0.07] sm:rounded-[1.5rem] sm:p-5"
                 >
-                  <div className="flex items-start gap-4">
-                    <ProfileAvatar profile={profile} className="h-14 w-14 rounded-3xl" textClassName="text-2xl" />
+                  <div className="flex items-start gap-3 sm:gap-4">
+                    <ProfileAvatar profile={profile} className="h-10 w-10 rounded-2xl sm:h-14 sm:w-14 sm:rounded-3xl" textClassName="text-base sm:text-2xl" />
                     <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h4 className="truncate text-xl font-black text-white">{profile.display_name || profile.handle || "Unnamed user"}</h4>
+                      <div className="flex min-w-0 flex-wrap items-center gap-1.5 sm:gap-2">
+                        <h4 className="truncate text-base font-black text-white sm:text-xl">{profile.display_name || profile.handle || "Unnamed user"}</h4>
                         <Badge className={roleBadgeClass(profile.role)}>{roleName(profile.role)}</Badge>
                       </div>
-                      <p className="truncate text-sm text-slate-500">{profile.handle ? `@${profile.handle}` : profile.user_id}</p>
+                      <p className="truncate text-xs text-slate-500 sm:text-sm">{profile.handle ? `@${profile.handle}` : profile.user_id}</p>
                       {profile.bio ? (
-                        <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-300">{profile.bio}</p>
+                        <p className="mt-2 line-clamp-1 text-xs leading-5 text-slate-300 sm:mt-3 sm:line-clamp-2 sm:text-sm sm:leading-6">{profile.bio}</p>
                       ) : (
-                        <p className="mt-3 text-sm text-slate-500">No bio yet.</p>
+                        <p className="mt-2 text-xs text-slate-500 sm:mt-3 sm:text-sm">No bio yet.</p>
                       )}
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        <Badge className="rounded-xl bg-purple-500/20 text-purple-200">{profile.badgeCount} badge{profile.badgeCount === 1 ? "" : "s"}</Badge>
-                        <Badge className="rounded-xl bg-emerald-500/20 text-emerald-200">{profile.achievementCount} achievement{profile.achievementCount === 1 ? "" : "s"}</Badge>
-                        <Badge className="rounded-xl bg-cyan-500/20 text-cyan-200">{profile.activityCount} activity</Badge>
+                      <div className="mt-3 flex flex-wrap gap-1.5 sm:mt-4 sm:gap-2">
+                        <Badge className="rounded-xl bg-purple-500/20 text-[11px] text-purple-200 sm:text-xs">{profile.badgeCount} badge{profile.badgeCount === 1 ? "" : "s"}</Badge>
+                        <Badge className="rounded-xl bg-emerald-500/20 text-[11px] text-emerald-200 sm:text-xs">{profile.achievementCount} achievement{profile.achievementCount === 1 ? "" : "s"}</Badge>
+                        <Badge className="rounded-xl bg-cyan-500/20 text-[11px] text-cyan-200 sm:text-xs">{profile.activityCount} activity</Badge>
                       </div>
                     </div>
                   </div>
@@ -2675,8 +2791,24 @@ function StatsPage({ levels, requests, reports, statusRequests, changelogEntries
     <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
       <section className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-6 shadow-2xl shadow-black/20 md:p-8">
         <Badge className="mb-4 rounded-xl bg-purple-500/20 text-purple-200">Site stats</Badge>
-        <h2 className="text-5xl font-black tracking-tight md:text-7xl">Stats</h2>
+        <h2 className="text-4xl font-black tracking-tight sm:text-5xl md:text-7xl">Stats</h2>
         <p className="mt-3 max-w-2xl text-slate-300">A live-ish dashboard for PeePooList levels, profiles, updates, chat, and moderation activity.</p>
+      </section>
+
+
+      <section className="grid gap-4 md:grid-cols-3">
+        {[
+          ["What these numbers show", "The stats page summarizes public activity across PeePooList, including ranked levels, profiles, badges, changelog posts, and visible chat activity."],
+          ["Why stats matter", "Counts make it easier to tell whether the site is active, how many levels are listed, and whether public community features are being used."],
+          ["Moderation context", "Some moderation counts are only visible to admins because reports, requests, and status changes can include information that should not be exposed publicly."]
+        ].map(([title, body]) => (
+          <Card key={title} className="rounded-[1.7rem] border-white/10 bg-slate-950/70 text-slate-100">
+            <CardContent className="p-6">
+              <h3 className="text-2xl font-black">{title}</h3>
+              <p className="mt-3 leading-7 text-slate-400">{body}</p>
+            </CardContent>
+          </Card>
+        ))}
       </section>
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -2805,7 +2937,7 @@ function AdminMessagesPage({ isAdmin, user, profile, messages, reads, onSendMess
     <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
       <section className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-6 shadow-2xl shadow-black/20 md:p-8">
         <Badge className="mb-4 rounded-xl bg-yellow-300 text-black">Admin only</Badge>
-        <h2 className="text-5xl font-black tracking-tight md:text-7xl">Admin Messages</h2>
+        <h2 className="text-4xl font-black tracking-tight sm:text-5xl md:text-7xl">Admin Messages</h2>
         <p className="mt-3 max-w-2xl text-slate-300">
           Private messages for admins only. Use this for moderation notes, site plans, urgent issues, and reminders.
         </p>
@@ -2998,8 +3130,12 @@ function OwnerToolsPage({ user, profile, isAdminPlus, isOwner, publicProfiles, o
   }, [isOwner]);
 
   async function saveRole(row) {
-    const nextRole = roleDrafts[row.user_id] || row.role || "user";
-    if (!canManageRole(callerRole, row.role || "user", nextRole)) {
+    const targetRole = row.role || "user";
+    const roleOptions = manageableRoleOptionsFor(callerRole, targetRole);
+    const rawNextRole = roleDrafts[row.user_id] || targetRole;
+    const nextRole = roleOptions.some((item) => item.value === rawNextRole) ? rawNextRole : targetRole;
+
+    if (!canManageRole(callerRole, targetRole, nextRole)) {
       setMessage("You cannot set that permission level for this user.");
       return;
     }
@@ -3085,7 +3221,7 @@ function OwnerToolsPage({ user, profile, isAdminPlus, isOwner, publicProfiles, o
     <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
       <section className="rounded-[2rem] border border-yellow-300/20 bg-yellow-300/10 p-6 shadow-2xl shadow-black/20 md:p-8">
         <Badge className="mb-4 rounded-xl bg-yellow-300 text-black">{isOwner ? "Owner access" : "Admin+ access"}</Badge>
-        <h2 className="text-5xl font-black tracking-tight md:text-7xl">Owner Tools</h2>
+        <h2 className="text-4xl font-black tracking-tight sm:text-5xl md:text-7xl">Owner Tools</h2>
         <p className="mt-3 max-w-3xl leading-7 text-slate-300">
           Manage PeePooList permissions from the website. Admin+ can change users that are not Admin+ or Owner. Owner can manage every role and use account tools like changing emails, sending password resets, and deleting users.
         </p>
@@ -3118,8 +3254,12 @@ function OwnerToolsPage({ user, profile, isAdminPlus, isOwner, publicProfiles, o
               <div className="rounded-2xl border border-dashed border-white/15 p-8 text-center text-slate-400">No profiles loaded.</div>
             ) : (
               rows.map((row) => {
-                const draftRole = roleDrafts[row.user_id] || row.role || "user";
-                const canSave = canManageRole(callerRole, row.role || "user", draftRole);
+                const targetRole = row.role || "user";
+                const roleOptions = manageableRoleOptionsFor(callerRole, targetRole);
+                const rawDraftRole = roleDrafts[row.user_id] || targetRole;
+                const draftRole = roleOptions.some((item) => item.value === rawDraftRole) ? rawDraftRole : targetRole;
+                const lockedTarget = callerRole === "admin_plus" && ["admin_plus", "owner"].includes(targetRole);
+                const canSave = canManageRole(callerRole, targetRole, draftRole) && draftRole !== targetRole;
                 return (
                   <div key={row.user_id} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -3133,16 +3273,22 @@ function OwnerToolsPage({ user, profile, isAdminPlus, isOwner, publicProfiles, o
                           <p className="mt-1 text-sm text-emerald-200">@{profileHandle(row)}</p>
                           {row.bio && <p className="mt-2 line-clamp-2 text-sm text-slate-400">{row.bio}</p>}
                           <p className="mt-2 break-all text-xs text-slate-500">{row.email || row.user_id}</p>
+                          {lockedTarget && (
+                            <p className="mt-2 text-xs font-bold text-yellow-200">
+                              Admin+ cannot change Admin+ or Owner accounts.
+                            </p>
+                          )}
                         </div>
                       </button>
 
                       <div className="grid gap-2 sm:grid-cols-2 lg:w-[28rem]">
                         <select
                           value={draftRole}
+                          disabled={lockedTarget}
                           onChange={(event) => setRoleDrafts((current) => ({ ...current, [row.user_id]: event.target.value }))}
-                          className="rounded-2xl border border-white/10 bg-slate-900 px-3 py-2 text-sm font-bold text-white outline-none"
+                          className="rounded-2xl border border-white/10 bg-slate-900 px-3 py-2 text-sm font-bold text-white outline-none disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                          {PERMISSION_ROLES.map((item) => (
+                          {roleOptions.map((item) => (
                             <option key={item.value} value={item.value} className="bg-slate-900">
                               {item.label}
                             </option>
@@ -3201,7 +3347,7 @@ function AdminDashboardPage({ isAdmin, isAdminPlus, levels, requests, statusRequ
     <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
       <section className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-6 shadow-2xl shadow-black/20 md:p-8">
         <Badge className="mb-4 rounded-xl bg-yellow-300 text-black">Admin dashboard</Badge>
-        <h2 className="text-5xl font-black tracking-tight md:text-7xl">Admin</h2>
+        <h2 className="text-4xl font-black tracking-tight sm:text-5xl md:text-7xl">Admin</h2>
         <p className="mt-3 max-w-2xl text-slate-300">One place for moderation, request queues, reports, chat cleanup, and quick site checks.</p>
       </section>
 
@@ -3438,6 +3584,37 @@ function LevelDetailPage({ level, index, listType, changelogEntries, comments, u
           <CardContent className="p-6">
             <h3 className="text-2xl font-black">Corrections</h3>
             <p className="mt-2 text-slate-400">Use Submit edit on the list page for fixes, or Report this level for unsafe or broken content.</p>
+          </CardContent>
+        </Card>
+      </section>
+
+
+      <section className="grid gap-6 lg:grid-cols-[1fr_.9fr]">
+        <Card className="rounded-[2rem] border-white/10 bg-slate-950/80 text-slate-100 shadow-2xl shadow-black/30">
+          <CardContent className="space-y-4 p-6 leading-7 text-slate-300 md:p-8">
+            <Badge className="rounded-xl bg-white/10 text-white">Placement notes</Badge>
+            <h3 className="text-3xl font-black text-white">About this {listName} placement</h3>
+            <p>
+              This page collects the public information PeePooList currently has for <b className="text-white">{level.name}</b>. The rank, creator, verifier, list type, thumbnail, and link are shown together so visitors can check the entry without hunting through the full list.
+            </p>
+            <p>
+              A level detail page is also the best place to share a specific entry, leave a short comment, or report something that looks wrong. If the level has a broken link, incorrect credit, bad thumbnail, duplicate entry, or misleading status, use the report button or submit an edit request from the list page.
+            </p>
+            <p>
+              PeePooList is a parody ranking site, so this placement is not an official Geometry Dash ruling. It is a public record of how the site currently organizes the level.
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-[2rem] border-white/10 bg-white/[0.04] text-slate-100">
+          <CardContent className="space-y-4 p-6 leading-7 text-slate-300 md:p-8">
+            <h3 className="text-2xl font-black text-white">How to help improve this page</h3>
+            <p>
+              Useful corrections include a safer thumbnail, a better level link, a corrected creator or verifier, a clearer impossible/possible status, or a reason the level should move to another rank.
+            </p>
+            <p>
+              Comments should stay focused on the level or the listing. Reports should be used for actual problems instead of random jokes, spam, or unrelated messages.
+            </p>
           </CardContent>
         </Card>
       </section>
@@ -4068,6 +4245,41 @@ function ListPage({ listType, levels, isAdmin, user, requests, reports, addLevel
 
   const title = listType === "pooplist" ? "The Pooplist" : "The Peelist";
   const subtitle = listType === "pooplist" ? "Possible levels ranked by placement, verification, and list status." : "Impossible levels ranked by placement, difficulty, and list status.";
+  const isPooplist = listType === "pooplist";
+  const listInfo = isPooplist
+    ? {
+        badge: "Possible-side ranking",
+        overview:
+          "The Pooplist is the possible-side ranking for PeePooList. It is meant for Geometry Dash levels that the site treats as beatable, confirmable, or supported well enough to place on the possible list.",
+        purpose:
+          "This page gives visitors a public place to browse possible placements without needing to search through chat logs, private notes, or old request messages.",
+        belongs:
+          "A level usually belongs here when it has enough completion proof, verifier information, creator information, level history, or review context to be treated as a possible placement.",
+        notBelongs:
+          "Levels that are clearly impossible, unfinished, fake-verified, joke-only, or too questionable for possible ranking should usually be moved to The Peelist instead.",
+        evidenceTitle: "What helps a Pooplist request?",
+        evidence:
+          "Useful details include the level name, creator, verifier, level link, placement reason, completion proof, thumbnail correction, and what rank or edit is being requested.",
+      }
+    : {
+        badge: "Impossible-side ranking",
+        overview:
+          "The Peelist is the impossible-side ranking for PeePooList. It is meant for Geometry Dash levels that the site treats as impossible, unverified, unfinished, joke-verified, or too questionable for the possible list.",
+        purpose:
+          "This page keeps impossible and questionable levels organized without mixing them into The Pooplist. Visitors can still browse them, open level pages, submit corrections, and report bad information.",
+        belongs:
+          "A level usually belongs here when it is not reasonably verified, does not have enough evidence for a possible placement, is known as impossible, or is included mainly for tracking and discussion.",
+        notBelongs:
+          "Levels with strong completion evidence, clear verifier information, and enough review history may be better suited for The Pooplist instead of staying on the impossible side.",
+        evidenceTitle: "What helps a Peelist request?",
+        evidence:
+          "Useful details include why the level is impossible or questionable, what evidence is missing, whether the verifier is unknown, and whether the entry should be moved, edited, or removed.",
+      };
+  const listGuideCards = [
+    ["Rank", "The rank shows where the level currently sits on this list. If a request changes the order, nearby ranks are adjusted so the list stays readable."],
+    ["Creator and verifier", "Creator and verifier fields help explain who made the level and who is connected to the listed completion or status. Unknown information should be corrected when reliable details are available."],
+    ["Reports and corrections", "Reports are for broken links, wrong credits, bad thumbnails, duplicates, unsafe content, or anything that makes a public level card misleading."]
+  ];
   const normalizedSearch = searchTerm.trim().toLowerCase();
   const filteredLevels = normalizedSearch
     ? levels.filter((level) =>
@@ -4103,7 +4315,7 @@ function ListPage({ listType, levels, isAdmin, user, requests, reports, addLevel
             <Badge className={listType === "pooplist" ? "mb-4 rounded-xl bg-amber-500/20 text-amber-200" : "mb-4 rounded-xl bg-yellow-300/20 text-yellow-100"}>
               {searchTerm ? `${filteredLevels.length}/${levels.length}` : levels.length} ranked levels
             </Badge>
-            <h2 className="text-5xl font-black tracking-tight md:text-7xl">{title}</h2>
+            <h2 className="text-4xl font-black tracking-tight sm:text-5xl md:text-7xl">{title}</h2>
             <p className="mt-3 max-w-2xl text-slate-300">{subtitle}</p>
           </div>
 
@@ -4124,6 +4336,46 @@ function ListPage({ listType, levels, isAdmin, user, requests, reports, addLevel
             )}
           </div>
         </div>
+      </section>
+
+
+      <section className="grid gap-6 lg:grid-cols-[1fr_.85fr]">
+        <Card className="rounded-[2rem] border-white/10 bg-slate-950/80 text-slate-100 shadow-2xl shadow-black/30">
+          <CardContent className="space-y-4 p-6 leading-7 text-slate-300 md:p-8">
+            <Badge className={isPooplist ? "rounded-xl bg-amber-500/20 text-amber-200" : "rounded-xl bg-cyan-500/20 text-cyan-200"}>
+              {listInfo.badge}
+            </Badge>
+            <h3 className="text-3xl font-black text-white">How to read {title}</h3>
+            <p>{listInfo.overview}</p>
+            <p>{listInfo.purpose}</p>
+            <p>{listInfo.belongs}</p>
+            <p>{listInfo.notBelongs}</p>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-[2rem] border-white/10 bg-white/[0.04] text-slate-100">
+          <CardContent className="space-y-4 p-6 leading-7 text-slate-300 md:p-8">
+            <h3 className="text-2xl font-black text-white">{listInfo.evidenceTitle}</h3>
+            <p>{listInfo.evidence}</p>
+            <p>
+              Requests are reviewed before they become public list changes. That review step helps prevent duplicate entries, joke edits, unsafe thumbnails, bad links, and confusing placement changes.
+            </p>
+            <Button onClick={() => setShowRequest(true)} variant="secondary" className="rounded-2xl">
+              Submit a list request
+            </Button>
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-3">
+        {listGuideCards.map(([cardTitle, body]) => (
+          <Card key={cardTitle} className="rounded-[1.7rem] border-white/10 bg-slate-950/70 text-slate-100">
+            <CardContent className="p-6">
+              <h3 className="text-2xl font-black">{cardTitle}</h3>
+              <p className="mt-3 leading-7 text-slate-400">{body}</p>
+            </CardContent>
+          </Card>
+        ))}
       </section>
 
       {!isConfigured && (
