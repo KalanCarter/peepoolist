@@ -163,9 +163,16 @@ export default async function handler(req, res) {
         }
       }
 
-      const { error } = await serviceClient
+      const { data: existingProfile, error: existingProfileError } = await serviceClient
         .from("profiles")
-        .upsert({
+        .select("user_id, role")
+        .eq("user_id", targetUserId)
+        .maybeSingle();
+
+      if (existingProfileError) throw existingProfileError;
+
+      if (!existingProfile) {
+        const { error: insertError } = await serviceClient.from("profiles").insert({
           user_id: targetUserId,
           role: "user",
           display_name: displayName || null,
@@ -173,9 +180,24 @@ export default async function handler(req, res) {
           bio: bio || null,
           avatar_url: avatarUrl || null,
           updated_at: new Date().toISOString(),
-        }, { onConflict: "user_id", ignoreDuplicates: false });
+        });
 
-      if (error) throw error;
+        if (insertError) throw insertError;
+      } else {
+        const { error: updateError } = await serviceClient
+          .from("profiles")
+          .update({
+            display_name: displayName || null,
+            handle: handle || null,
+            bio: bio || null,
+            avatar_url: avatarUrl || null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("user_id", targetUserId);
+
+        if (updateError) throw updateError;
+      }
+
       return send(res, 200, { ok: true });
     }
 

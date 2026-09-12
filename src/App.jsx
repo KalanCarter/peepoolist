@@ -27,6 +27,7 @@ import {
   ChevronDown,
   ChevronUp,
   Heart,
+  Award,
 } from "lucide-react";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
